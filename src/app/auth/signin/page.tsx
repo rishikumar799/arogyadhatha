@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -33,23 +34,16 @@ export default function SignInPage() {
     }
   }, [toast]);
 
-  const SUPER_ADMIN_EMAIL =
-    process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'superadmin@example.com';
-  const SUPER_ADMIN_PASSWORD =
-    process.env.NEXT_PUBLIC_SUPER_ADMIN_PASSWORD || 'SuperSecret123';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    try {
-      if (email === SUPER_ADMIN_EMAIL && password === SUPER_ADMIN_PASSWORD) {
-        document.cookie = 'superAdminSession=true; path=/';
-        toast({ title: 'Super Admin Login', description: 'Welcome Super Admin!' });
-        window.location.href = '/superadmin/dashboard';
-        return;
-      }
+    if (email === 'superadmin@example.com' && password === 'SuperSecret123') {
+      router.push('/superadmin/dashboard');
+      return;
+    }
 
+    try {
       if (!auth) {
         throw new Error('Firebase not initialized');
       }
@@ -58,70 +52,39 @@ export default function SignInPage() {
       if (!userCredential?.user) {
         throw new Error('No user data received');
       }
-      
-      const uid = userCredential.user.uid;
-      let role: string | null = null;
 
-      // Correctly map each role to its specific dashboard path
-      const mapRoleToPrefix = (r: string) => {
-        const role = (r || '').toString().toLowerCase();
-        if (role === 'patient') return 'patient';
-        if (role === 'doctor') return 'doctor';
-        if (role === 'receptionist') return 'receptionist';
-        if (role === 'diagnostics') return 'diagnostics';
-        if (role === 'superadmin') return 'superadmin';
-        return 'patient'; // Default fallback
-      };
+      const idToken = await userCredential.user.getIdToken();
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ idToken }),
+      });
 
-      try {
-        const requestDoc = await getDoc(doc(db, 'requests', uid));
-        const requestData = requestDoc.exists() ? requestDoc.data() : null;
-        if (requestData && requestData.status !== 'Approved') {
-          throw new Error('Your account is pending approval from the administrator');
-        }
-
-        const userDoc = await getDoc(doc(db, 'users', uid));
-        const userData = userDoc.exists() ? userDoc.data() : null;
-
-        if (userData && userData.role) {
-          role = userData.role.toString().toLowerCase();
-        }
-      } catch (err: any) {
-        const code = err?.code || '';
-        const isPermissionError = typeof code === 'string' ? code.toLowerCase().includes('permission') : String(err?.message || '').toLowerCase().includes('permission');
-
-        if (!role && isPermissionError) {
-          try {
-            const idToken = await userCredential.user.getIdToken(true);
-            const res = await fetch('/api/auth/session', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ idToken }),
-            });
-
-            if (!res.ok) {
-              const body = await res.json().catch(() => ({}));
-              throw new Error(body?.error || 'Server session fallback failed');
-            }
-
-            const data = await res.json();
-            if (data?.error) throw new Error(data.error);
-            role = data?.role?.toString().toLowerCase() || null;
-          } catch (fallbackErr: any) {
-            throw new Error('Missing or insufficient permissions to read user data from Firestore. Server fallback failed: ' + (fallbackErr?.message || fallbackErr));
-          }
-        }
+      if (!response.ok) {
+        throw new Error('Failed to create session');
       }
+
+      const uid = userCredential.user.uid;
+      const userDoc = await getDoc(doc(db, 'users', uid));
+
+      if (!userDoc.exists()) {
+        throw new Error('No user data found in Firestore. Please sign up or contact an administrator.');
+      }
+
+      const userData = userDoc.data();
+      const role = userData.role.toString().toLowerCase().trim();
 
       if (!role) {
         await auth.signOut();
         throw new Error('User role not found. Please sign up or contact administrator.');
       }
 
-      const prefix = mapRoleToPrefix(role);
+      const prefix = role === 'superadmin' ? 'superadmin' : role;
       router.push(`/${prefix}/dashboard`);
       toast({ title: 'Login Successful', description: `Welcome back!` });
-      
+
     } catch (error: any) {
       toast({
         variant: 'destructive',

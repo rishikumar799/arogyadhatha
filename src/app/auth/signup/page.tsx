@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -47,9 +48,9 @@ export default function SignUpPage() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
+      const idToken = await userCredential.user.getIdToken();
 
       if (role === 'Patient') {
-        // ✅ Direct entry into users
         await setDoc(doc(db, 'users', uid), {
           uid,
           firstName,
@@ -61,10 +62,21 @@ export default function SignUpPage() {
           createdAt: new Date(),
         });
 
-        toast({ title: 'Registration Successful', description: 'You can now login.' });
-        router.push('/auth/signin');
+        const response = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ idToken }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create session');
+        }
+
+        toast({ title: 'Registration Successful', description: 'You are now logged in.' });
+        router.push('/patients/dashboard');
       } else {
-        // ✅ Send request for approval
         await setDoc(doc(db, 'requests', uid), {
           uid,
           firstName,
