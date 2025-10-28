@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Link from "next/link";
@@ -167,8 +166,8 @@ function AiAssistantDialog() {
                         className="flex-1 resize-none"
                         rows={1}
                         disabled={isPending}
-                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); }}}
-                    />
+                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); }}}>
+                    </Textarea>
                     <Button type="submit" size="icon" disabled={isPending || !input.trim()}>
                         <Send className="h-4 w-4" />
                     </Button>
@@ -242,7 +241,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex flex-col min-h-screen">
           <header className="sticky top-0 z-20 flex items-center justify-between p-3 bg-primary text-primary-foreground gap-4 h-16">
-              <Link href="/" className="flex items-center gap-2">
+              <Link href="/patients" className="flex items-center gap-2">
                   <div className="p-1.5 bg-primary-foreground rounded-lg">
                       <Activity className="w-6 h-6 text-primary" />
                   </div>
@@ -267,12 +266,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col min-h-screen">
       <header className="sticky top-0 z-20 flex items-center justify-between p-3 bg-primary text-primary-foreground gap-2 h-16">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-            {pathname !== '/' ? (
+            {pathname !== '/patients' ? (
                 <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-10 w-10 text-primary-foreground flex-shrink-0">
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
             ) : (
-                <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+                <Link href="/patients" className="flex items-center gap-2 flex-shrink-0">
                     <div className="p-1.5 bg-primary-foreground rounded-lg">
                         <AnimatedActivityIcon className="w-6 h-6 text-primary" />
                     </div>
@@ -309,7 +308,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <DropdownMenuContent className="w-80" align="end" forceMount>
                         <DropdownMenuItem className="p-0 focus:bg-transparent">
                             <div className="flex items-center justify-between w-full p-3">
-                                <Link href="/profile" className="flex items-start gap-3 cursor-pointer flex-1 overflow-hidden">
+                                <Link href="/patients/profile" className="flex items-start gap-3 cursor-pointer flex-1 overflow-hidden">
                                     <Avatar className="h-10 w-10">
                                         <AvatarImage src="/images/profile.jpg" />
                                         <AvatarFallback>CL</AvatarFallback>
@@ -335,7 +334,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                                 <span className="font-semibold">Wallet</span>
                                 <span className="ml-auto font-bold text-primary">₹150</span>
                             </DropdownMenuItem>
-                             <Link href="/refer-and-earn" passHref>
+                             <Link href="/patients/refer-and-earn" passHref>
                                 <DropdownMenuItem className="p-3">
                                     <Gift className="mr-3 text-primary" />
                                     <span className="font-semibold">Refer & Earn</span>
@@ -351,7 +350,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                                 </Link>
                             ))}
                             
-                            <Link href="/settings" passHref>
+                            <Link href="/patients/settings" passHref>
                                 <DropdownMenuItem className="p-3">
                                     <Settings className="mr-3 text-primary" />
                                     <span className="font-semibold">Settings</span>
@@ -363,13 +362,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                                     <span className="font-semibold">Customer Support</span>
                                 </DropdownMenuItem>
                             </a>
-                             <Link href="/terms" passHref>
+                             <Link href="/patients/terms" passHref>
                                 <DropdownMenuItem className="p-3">
                                     <FileText className="mr-3 text-primary" />
                                     <span className="font-semibold">Terms &amp; Conditions</span>
                                 </DropdownMenuItem>
                             </Link>
-                             <Link href="/about" passHref>
+                             <Link href="/patients/about" passHref>
                                 <DropdownMenuItem className="p-3">
                                     <Info className="mr-3 text-primary" />
                                     <span className="font-semibold">About Arogyadhatha</span>

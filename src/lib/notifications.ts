@@ -10,7 +10,7 @@ export const notifications = [
         timestamp: new Date(),
         read: false,
         icon: Settings,
-        href: '/profile',
+        href: '/patients/profile',
         category: 'Settings'
     },
     {
@@ -21,7 +21,7 @@ export const notifications = [
         timestamp: new Date(Date.now() - 1000 * 60 * 30),
         read: false,
         icon: CalendarCheck,
-        href: '/opd-queue',
+        href: '/patients/opd-queue',
         category: 'Appointments'
     },
     {
@@ -32,7 +32,7 @@ export const notifications = [
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
         read: false,
         icon: FileText,
-        href: '/lab-reports',
+        href: '/patients/lab-reports',
         category: 'Reports'
     },
     {
@@ -43,7 +43,7 @@ export const notifications = [
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4),
         read: false,
         icon: Sparkles,
-        href: '/lab-reports',
+        href: '/patients/lab-reports',
         category: 'Reports'
     },
     {
@@ -54,7 +54,7 @@ export const notifications = [
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8),
         read: true,
         icon: Pill,
-        href: '/medicines',
+        href: '/patients/medicines',
         category: 'Medications'
     },
      {
@@ -65,7 +65,7 @@ export const notifications = [
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
         read: true,
         icon: CalendarCheck,
-        href: '/opd-queue',
+        href: '/patients/opd-queue',
         category: 'Appointments'
     },
     {
@@ -76,7 +76,7 @@ export const notifications = [
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2.5),
         read: false,
         icon: CalendarCheck,
-        href: '/opd-queue',
+        href: '/patients/opd-queue',
         category: 'Appointments'
     },
     {
@@ -87,7 +87,7 @@ export const notifications = [
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
         read: true,
         icon: MessageSquare,
-        href: '/opd-queue',
+        href: '/patients/opd-queue',
         category: 'Appointments'
     },
     {
@@ -98,7 +98,7 @@ export const notifications = [
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3.5),
         read: true,
         icon: Pill,
-        href: '/medicines',
+        href: '/patients/medicines',
         category: 'Medications'
     },
     {
@@ -109,7 +109,7 @@ export const notifications = [
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4),
         read: true,
         icon: TestTube,
-        href: '/lab-reports',
+        href: '/patients/lab-reports',
         category: 'Reports'
     },
     {
@@ -120,7 +120,7 @@ export const notifications = [
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5),
         read: true,
         icon: Heart,
-        href: '/health-tracker',
+        href: '/patients/health-tracker',
         category: 'General'
     },
     {
@@ -131,7 +131,7 @@ export const notifications = [
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6),
         read: true,
         icon: Settings,
-        href: '/settings',
+        href: '/patients/settings',
         category: 'Settings'
     },
     {
@@ -142,7 +142,7 @@ export const notifications = [
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7),
         read: true,
         icon: Heart,
-        href: '/health-tracker',
+        href: '/patients/health-tracker',
         category: 'General'
     }
 ];
