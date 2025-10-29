@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,7 +24,6 @@ export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,7 +40,6 @@ export default function SignInPage() {
 
       const idToken = await user.getIdToken();
 
-      // Make a request to the session API route to set the cookie
       const res = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -54,21 +51,20 @@ export default function SignInPage() {
         throw new Error(errorData.error || 'Session creation failed.');
       }
 
-      const { role } = await res.json(); // The role comes from the backend
+      const { role } = await res.json();
 
       if (!role || !rolePaths[role]) {
         await signOut(auth);
         throw new Error('Role not found or invalid for this user.');
       }
 
-      // Use the rolePaths map to get the correct base path
       const basePath = rolePaths[role];
       const dashboardPath = `${basePath}/dashboard`;
 
       toast({ title: 'Login Successful', description: `Welcome back! Redirecting...` });
 
-      // Redirect the user to their specific dashboard
-      router.push(dashboardPath);
+      // Force a hard redirect to the dashboard
+      window.location.href = dashboardPath;
 
     } catch (error: any) {
       let errorMessage = 'Invalid email or password.';
