@@ -1,4 +1,6 @@
 
+export const runtime = 'nodejs'; // Force Node.js runtime
+
 import { NextResponse, type NextRequest } from 'next/server';
 import admin from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
