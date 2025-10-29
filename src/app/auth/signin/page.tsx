@@ -25,7 +25,6 @@ export default function SignInPage() {
     setIsLoading(true);
 
     try {
-      // Sign in the user with Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
@@ -33,38 +32,33 @@ export default function SignInPage() {
         throw new Error('Authentication failed. Please try again.');
       }
 
-      // Fetch user profile from Firestore to get the role
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+      const idToken = await user.getIdToken();
 
-      let role;
-      if (userDoc.exists()) {
-        role = userDoc.data()?.role;
-      } else {
-        // Handle users who exist in Auth but not in Firestore (e.g., pending requests)
-        toast({
-          title: 'Request Pending',
-          description: 'Your registration request is still pending approval.',
-        });
-        await signOut(auth); // Sign them out
-        setIsLoading(false);
-        return;
+      // Make a request to the session API route to set the cookie
+      const res = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Session creation failed.');
       }
 
+      const { role } = await res.json();
+
       if (!role) {
-         // Handle cases where role is not defined in the user document
         await signOut(auth);
         throw new Error('Role not found for this user.');
       }
-      
-      // Redirect based on the role
+
       const dashboardPath = `/${role}/dashboard`;
       router.push(dashboardPath);
 
       toast({ title: 'Login Successful', description: `Welcome back!` });
 
     } catch (error: any) {
-      // Handle different kinds of errors
       let errorMessage = 'Invalid email or password.';
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         errorMessage = 'Invalid email or password.';

@@ -1,76 +1,67 @@
 
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
+import { cookies } from 'next/headers';
+import admin from './lib/firebase-admin';
 
-const PROTECTED_ROUTES = {
-  patient: ['/patient'],
-  doctor: ['/doctor'],
-  receptionist: ['/receptionist'],
-  diagnostics: ['/diagnostics'],
-  superadmin: ['/superadmin'],
-};
-
-// Helper to map roles to their respective dashboards
-const mapRoleToDashboard = (role: string) => {
-  switch (role) {
-    case 'patient':
-      return '/patient/dashboard';
-    case 'doctor':
-      return '/doctor/dashboard';
-    case 'receptionist':
-      return '/receptionist/dashboard';
-    case 'diagnostics':
-      return '/diagnostics/dashboard';
-    case 'superadmin':
-      return '/superadmin/dashboard';
-    default:
-      return '/';
-  }
-};
-
+const PROTECTED_ROUTES = ['/patient/dashboard', '/doctor/dashboard', '/receptionist/dashboard', '/diagnostics/dashboard', '/superadmin/dashboard', '/superadmin/requests'];
+const AUTH_ROUTE = '/auth/signin';
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const sessionCookie = request.cookies.get('__session')?.value;
+    const { pathname } = request.nextUrl;
+    const sessionCookie = cookies().get('__session')?.value;
 
-  // If no session cookie, redirect to signin page, except for auth pages
-  if (!sessionCookie) {
-    if (pathname.startsWith('/auth')) {
-        return NextResponse.next();
+    const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
+
+    if (!sessionCookie && isProtectedRoute) {
+        // If there's no session cookie and the user is trying to access a protected route, redirect to sign-in
+        const url = request.nextUrl.clone();
+        url.pathname = AUTH_ROUTE;
+        return NextResponse.redirect(url);
     }
-    return NextResponse.redirect(new URL('/auth/signin', request.url));
-  }
 
-  // If there is a session cookie, let's verify it
-  const verifyUrl = new URL('/api/auth/verify-session', request.url);
-  const response = await fetch(verifyUrl, {
-    headers: {
-        Cookie: `__session=${sessionCookie}`
+    if (sessionCookie) {
+        try {
+            // Verify the session cookie
+            const decodedToken = await admin.auth().verifySessionCookie(sessionCookie, true);
+            const userRole = decodedToken.role || 'patient'; 
+
+            if (isProtectedRoute) {
+                // If the user is on a protected route, check if their role matches the route
+                if (!pathname.startsWith(`/${userRole}`)) {
+                    // If roles don't match, redirect to their correct dashboard
+                    const url = request.nextUrl.clone();
+                    url.pathname = `/${userRole}/dashboard`;
+                    return NextResponse.redirect(url);
+                }
+            } else if (pathname === AUTH_ROUTE) {
+                // If the user is authenticated and tries to access the sign-in page, redirect to their dashboard
+                const url = request.nextUrl.clone();
+                url.pathname = `/${userRole}/dashboard`;
+                return NextResponse.redirect(url);
+            }
+
+        } catch (error) {
+            // If the session cookie is invalid, redirect to sign-in and clear the cookie
+            const url = request.nextUrl.clone();
+            url.pathname = AUTH_ROUTE;
+            const response = NextResponse.redirect(url);
+            response.cookies.set('__session', '', { maxAge: -1 }); // Clear the invalid cookie
+            return response;
+        }
     }
-  });
 
-  const { role } = await response.json();
-
-  // Redirect logged-in users from auth pages
-  if (pathname.startsWith('/auth')) {
-    return NextResponse.redirect(new URL(mapRoleToDashboard(role), request.url));
-  }
-
-  // Check if user is accessing a protected route for their role
-  const isAuthorized = Object.entries(PROTECTED_ROUTES).some(([r, routes]) => {
-    if (role === r) {
-      return routes.some((route) => pathname.startsWith(route));
-    }
-    return false;
-  });
-
-  if (!isAuthorized) {
-    return NextResponse.redirect(new URL(mapRoleToDashboard(role), request.url));
-  }
-
-  return NextResponse.next();
+    return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+    matcher: [
+        /*
+         * Match all request paths except for the ones starting with:
+         * - api (API routes)
+         * - _next/static (static files)
+         * - _next/image (image optimization files)
+         * - favicon.ico (favicon file)
+         */
+        '/((?!api|_next/static|_next/image|favicon.ico)._)',
+    ],
 };
