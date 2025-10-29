@@ -1,18 +1,30 @@
 import admin from 'firebase-admin';
-import { config } from 'dotenv';
 
-// Manually load environment variables from .env.local
-config();
+// This is the direct initialization method you suggested.
+// It is simpler but relies on a local file being present.
 
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-    databaseURL: process.env.FIREBASE_DATABASE_URL,
-  });
+  try {
+    // We use require here because it can handle JSON files directly.
+    // The path is relative from the final build location of this file.
+    const serviceAccount = require('../../../serviceAccountKey.json');
+
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      // The database URL is still useful to have in an environment variable.
+      databaseURL: process.env.FIREBASE_DATABASE_URL,
+    });
+
+  } catch (error: any) {
+    // Provide a helpful error message if the key file is missing.
+    if (error.code === 'MODULE_NOT_FOUND') {
+      throw new Error(
+        'Firebase Admin initialization error: The serviceAccountKey.json file was not found. Please download it from your Firebase project settings and place it in the root directory of your project.'
+      );
+    }
+    // Re-throw other errors.
+    throw error;
+  }
 }
 
 export default admin;
