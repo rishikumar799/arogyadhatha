@@ -5,3 +5,12 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+
+environmentVariables:
+  FIREBASE_CLIENT_EMAIL: "${env:FIREBASE_CLIENT_EMAIL}"
+  # Make the Project ID available to the server runtime
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: "${env:NEXT_PUBLIC_FIREBASE_PROJECT_ID}"
+
+secretEnvironmentVariables:
+  - secret: FIREBASE_PRIVATE_KEY
+    key: FIREBASE_PRIVATE_KEY

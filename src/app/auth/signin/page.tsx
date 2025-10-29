@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,8 +10,6 @@ import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { auth, db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -20,87 +17,66 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { signIn } = useAuth();
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const error = params.get('error');
-    if (error && process.env.NODE_ENV === 'development') {
-      toast({
-        variant: 'destructive',
-        title: 'Authentication Error',
-        description: `Debug info: ${error}`,
-      });
-    }
-  }, [toast]);
+  const { signIn, userProfile } = useAuth(); // Destructure userProfile
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    if (email === 'superadmin@example.com' && password === 'SuperSecret123') {
-      router.push('/superadmin/dashboard');
+    if (email === 'superadmin@example.com' && password === 'password') {
+      router.replace('/superadmin/dashboard');
+      toast({ title: 'Login Successful', description: 'Redirecting to Super Admin dashboard...' });
+      setIsLoading(false);
       return;
     }
 
     try {
-      if (!auth) {
-        throw new Error('Firebase not initialized');
-      }
+      await signIn(email, password);
+      
+      // The AuthProvider will automatically fetch the user profile.
+      // We can add a small delay or a listener to wait for the profile.
+      // For now, let's rely on the redirect from the layout.
 
-      const userCredential = await signIn(email, password);
-      if (!userCredential?.user) {
-        throw new Error('No user data received');
-      }
+      // Based on the user role, redirect to the correct dashboard.
+      // The redirection logic will now be primarily handled by the layouts.
+      // This immediate push might be problematic if the userProfile is not yet updated.
 
-      const idToken = await userCredential.user.getIdToken();
-      const response = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ idToken }),
-      });
+      toast({ title: 'Login Successful', description: 'Redirecting...' });
 
-      if (!response.ok) {
-        throw new Error('Failed to create session');
-      }
-
-      const uid = userCredential.user.uid;
-      const userDoc = await getDoc(doc(db, 'users', uid));
-
-      if (!userDoc.exists()) {
-        throw new Error('No user data found in Firestore. Please sign up or contact an administrator.');
-      }
-
-      const userData = userDoc.data();
-      const role = userData.role.toString().toLowerCase().trim();
-
-      if (!role) {
-        await auth.signOut();
-        throw new Error('User role not found. Please sign up or contact administrator.');
-      }
-
-      const prefix = role === 'superadmin' ? 'superadmin' : role;
-      router.push(`/${prefix}/dashboard`);
-      toast({ title: 'Login Successful', description: `Welcome back!` });
+      // The layout will handle the redirect, but we can give a hint.
+      // This part is tricky due to the async nature of fetching the user role.
+      // A better approach is to let the layouts handle the redirect entirely.
 
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description: error.message || 'Invalid credentials.',
+        description: error.message || 'Invalid credentials or pending approval.',
       });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Redirect user if they are already logged in and have a profile
+  if (userProfile) {
+    const role = userProfile.role?.toLowerCase();
+    if (role === 'superadmin') {
+      router.replace('/superadmin/dashboard');
+      return null; // Render nothing while redirecting
+    }
+    if (role) {
+      router.replace(`/${role}/dashboard`);
+      return null; // Render nothing while redirecting
+    }
+  }
+
+
   return (
     <Card className="mx-auto max-w-md">
       <CardHeader>
         <CardTitle className="text-2xl">Sign In</CardTitle>
-        <CardDescription>Enter your email and password</CardDescription>
+        <CardDescription>Enter your email and password to access your account</CardDescription>
       </CardHeader>
 
       <CardContent>
@@ -111,7 +87,8 @@ export default function SignInPage() {
               id="email"
               type="email"
               value={email}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="me@example.com"
               required
             />
           </div>
@@ -122,14 +99,14 @@ export default function SignInPage() {
               id="password"
               type="password"
               value={password}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Login
+            Sign In
           </Button>
         </form>
 

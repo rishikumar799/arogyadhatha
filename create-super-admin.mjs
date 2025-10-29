@@ -2,17 +2,8 @@
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// --- IMPORTANT ---
-// Before running this script, make sure you have set the following environment variables:
-// NEXT_PUBLIC_FIREBASE_PROJECT_ID
-// FIREBASE_CLIENT_EMAIL
-// FIREBASE_PRIVATE_KEY
-//
-// You can run this script from your terminal using: node create-super-admin.mjs
-// ---
-
 const superAdminEmail = 'superadmin@example.com';
-const superAdminPassword = 'Admin@123';
+const superAdminPassword = 'SuperSecret123';
 
 try {
   if (admin.apps.length === 0) {
@@ -65,7 +56,7 @@ try {
   console.log('✅ Super admin setup complete!');
   console.log('You can now log in with the following credentials:');
   console.log(`   Email: ${superAdminEmail}`);
-  console.log(`   Password: ${superAdminPassword}`);
+  console.log('   Password: [hidden for security]');
 
 } catch (error) {
   console.error('❌ Error setting up super admin:', error.message);

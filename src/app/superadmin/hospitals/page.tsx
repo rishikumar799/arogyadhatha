@@ -1,105 +1,147 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Search, Plus, MoreVertical, Hospital } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
-interface Hospital {
-  id: string;
-  name: string;
-  address: string;
-}
+export default function HospitalsPage() {
+  const [search, setSearch] = useState('');
 
-export default function Hospitals() {
-  const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [hospitalName, setHospitalName] = useState('');
-  const [hospitalAddress, setHospitalAddress] = useState('');
-  const { toast } = useToast();
+  // Dummy hospital data
+  const hospitals = [
+    {
+      id: 1,
+      name: 'City Hospital',
+      location: 'New York, USA',
+      doctors: 45,
+      patients: 120,
+      subAdmin: 'Dr. Alice Smith',
+      status: 'Active',
+    },
+    {
+      id: 2,
+      name: 'Sunrise Medical Center',
+      location: 'Los Angeles, USA',
+      doctors: 30,
+      patients: 80,
+      subAdmin: 'Dr. John Doe',
+      status: 'Active',
+    },
+    {
+      id: 3,
+      name: 'Green Valley Hospital',
+      location: 'Chicago, USA',
+      doctors: 25,
+      patients: 65,
+      subAdmin: 'Dr. Sarah Lee',
+      status: 'Inactive',
+    },
+  ];
 
-  useEffect(() => {
-    const fetchHospitals = async () => {
-      const querySnapshot = await getDocs(collection(db, 'hospitals'));
-      const hospitalsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Hospital[];
-      setHospitals(hospitalsData);
-    };
-
-    fetchHospitals();
-  }, []);
-
-  const handleAddHospital = async () => {
-    if (!hospitalName || !hospitalAddress) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Please enter hospital name and address.',
-      });
-      return;
-    }
-
-    try {
-      const docRef = await addDoc(collection(db, 'hospitals'), {
-        name: hospitalName,
-        address: hospitalAddress,
-      });
-      setHospitals([...hospitals, { id: docRef.id, name: hospitalName, address: hospitalAddress }]);
-      setHospitalName('');
-      setHospitalAddress('');
-      toast({ title: 'Hospital Added', description: 'The new hospital has been added.' });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error Adding Hospital', description: error.message });
-    }
-  };
-
-  const handleDeleteHospital = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, 'hospitals', id));
-      setHospitals(hospitals.filter(hospital => hospital.id !== id));
-      toast({ title: 'Hospital Deleted', description: 'The hospital has been deleted.' });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error Deleting Hospital', description: error.message });
-    }
-  };
+  const filtered = hospitals.filter((h) =>
+    h.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Manage Hospitals</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="flex gap-4">
-            <Input
-              placeholder="Hospital Name"
-              value={hospitalName}
-              onChange={(e) => setHospitalName(e.target.value)}
-            />
-            <Input
-              placeholder="Hospital Address"
-              value={hospitalAddress}
-              onChange={(e) => setHospitalAddress(e.target.value)}
-            />
-            <Button onClick={handleAddHospital}>Add Hospital</Button>
-          </div>
-          <div className="space-y-2">
-            {hospitals.map(hospital => (
-              <div key={hospital.id} className="flex items-center justify-between p-2 border rounded-lg">
-                <div>
-                  <p className="font-semibold">{hospital.name}</p>
-                  <p className="text-sm text-gray-500">{hospital.address}</p>
-                </div>
-                <Button variant="destructive" onClick={() => handleDeleteHospital(hospital.id)}>Delete</Button>
-              </div>
-            ))}
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Hospitals (Sub Admins)</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage hospitals, sub-admins, and their staff
+          </p>
         </div>
-      </CardContent>
-    </Card>
+        <Button className="gap-2">
+          <Plus className="h-4 w-4" /> Add Hospital
+        </Button>
+      </div>
+
+      {/* Search Bar */}
+      <div className="flex items-center gap-2 max-w-sm">
+        <Search className="h-5 w-5 text-muted-foreground" />
+        <Input
+          placeholder="Search hospitals..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      {/* Table View */}
+      <Card className="border border-border bg-white/70 dark:bg-neutral-900/60 backdrop-blur-sm shadow-md rounded-2xl">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">All Registered Hospitals</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto rounded-lg">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-muted/40 dark:bg-neutral-800/50 text-muted-foreground">
+                  <th className="text-left p-3">Name</th>
+                  <th className="text-left p-3">Location</th>
+                  <th className="text-left p-3">Sub Admin</th>
+                  <th className="text-center p-3">Doctors</th>
+                  <th className="text-center p-3">Patients</th>
+                  <th className="text-center p-3">Status</th>
+                  <th className="text-right p-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((h, i) => (
+                  <tr
+                    key={h.id}
+                    className={`${
+                      i % 2 === 0 ? 'bg-muted/20 dark:bg-neutral-800/30' : ''
+                    } border-b border-border hover:bg-muted/30 dark:hover:bg-neutral-800/50 transition-colors`}
+                  >
+                    <td className="p-3 font-medium flex items-center gap-2 text-foreground">
+                      <Hospital className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      {h.name}
+                    </td>
+                    <td className="p-3 text-foreground">{h.location}</td>
+                    <td className="p-3 text-foreground">{h.subAdmin}</td>
+                    <td className="p-3 text-center text-foreground">{h.doctors}</td>
+                    <td className="p-3 text-center text-foreground">{h.patients}</td>
+                    <td className="p-3 text-center">
+                      <Badge
+                        className="px-2 py-1"
+                        variant={h.status === 'Active' ? 'default' : 'destructive'}
+                      >
+                        {h.status}
+                      </Badge>
+                    </td>
+                    <td className="p-3 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-32">
+                          <DropdownMenuItem>Edit</DropdownMenuItem>
+                          <DropdownMenuItem>View</DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-600 dark:text-red-400">
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
