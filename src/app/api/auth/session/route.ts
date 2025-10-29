@@ -1,72 +1,64 @@
 
 import { NextResponse } from 'next/server';
 import admin from '@/lib/firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
 
 export async function POST(request: Request) {
-  const { idToken } = await request.json();
-
-  if (!idToken) {
-    return NextResponse.json({ error: 'No ID token provided.' }, { status: 400 });
-  }
-
-  const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
-
   try {
-    const decodedIdToken = await admin.auth().verifyIdToken(idToken);
-    const { uid, email } = decodedIdToken;
+    const body = await request.json();
+    const { idToken } = body;
 
-    const userDocRef = admin.firestore().collection('users').doc(uid);
-    const userDoc = await userDocRef.get();
-
-    let userRole: string;
-
-    // THE FIX: If the user document does not exist in Firestore, create it.
-    if (!userDoc.exists) {
-      // Determine the role for the new user.
-      // If it's the special superadmin email, assign the 'superadmin' role.
-      if (email === process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL) {
-        userRole = 'superadmin';
-      } else {
-        // Otherwise, default to 'patient' for all other new users.
-        userRole = 'patient';
-      }
-
-      // Create the user document in Firestore with their email and new role.
-      await userDocRef.set({
-        email: email,
-        role: userRole,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-    } else {
-      // If the user document exists, get their role from the database.
-      const existingRole = userDoc.data()?.role;
-      if (!existingRole) {
-        return NextResponse.json({ error: 'Role not found for existing user.' }, { status: 403 });
-      }
-      userRole = existingRole;
+    if (!idToken) {
+      return NextResponse.json({ error: 'ID token not provided' }, { status: 400 });
     }
 
-    const lowercaseRole = userRole.toLowerCase();
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const uid = decodedToken.uid;
 
-    // Set the role as a custom claim on the user's auth token.
-    await admin.auth().setCustomUserClaims(uid, { role: lowercaseRole });
+    const db = getFirestore();
+    const userRef = db.collection('users').doc(uid);
+    const userDoc = await userRef.get();
 
+    let role = 'patient'; // Default role
+
+    if (userDoc.exists) {
+      role = userDoc.data()?.role || role;
+    } else {
+      // This is a new user, create a document for them.
+      // The superadmin setup script handles superadmin creation.
+      // All other new users signing up through the app will be patients.
+      await userRef.set({
+        uid,
+        email: decodedToken.email,
+        role,
+        createdAt: new Date(),
+      });
+    }
+
+    // Set custom claims if they don't match the database role
+    if (decodedToken.role !== role) {
+      await admin.auth().setCustomUserClaims(uid, { role });
+    }
+
+    // THE FIX: Set a proper expiration for the session cookie.
+    // 5 days in seconds. This was previously 0, causing immediate expiration.
+    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     const sessionCookie = await admin.auth().createSessionCookie(idToken, { expiresIn });
-    const response = NextResponse.json({ status: 'success', role: lowercaseRole });
 
+    const response = NextResponse.json({ success: true, role });
+
+    // Set the session cookie in the browser.
     response.cookies.set('__session', sessionCookie, {
-      maxAge: expiresIn / 1000,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
       path: '/',
+      maxAge: expiresIn, // Use the same expiration time
     });
 
     return response;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Session login error:', error);
-    return NextResponse.json({ error: 'Failed to create session.' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
   }
 }

@@ -44,13 +44,13 @@ export async function middleware(request: NextRequest) {
       throw new Error('Role not found in session');
     }
 
-    // Define dashboard paths
+    // THE FIX: Point to the correct dashboard paths, which are nested.
     const dashboards: { [key: string]: string } = {
-      superadmin: '/superadmin',
-      doctor: '/doctor',
-      receptionist: '/receptionist',
-      diagnostics: '/diagnostics',
-      patient: '/patients'
+      superadmin: '/superadmin/dashboard',
+      doctor: '/doctor/dashboard',
+      receptionist: '/receptionist/dashboard',
+      diagnostics: '/diagnostics/dashboard',
+      patient: '/patients/dashboard'
     };
 
     const expectedDashboardPrefix = dashboards[userRole];
