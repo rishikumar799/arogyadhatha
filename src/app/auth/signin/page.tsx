@@ -10,8 +10,16 @@ import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
+
+// This mapping must match the one in the middleware
+const rolePaths: { [key: string]: string } = {
+  patient: '/patients',
+  doctor: '/doctor',
+  receptionist: '/receptionist',
+  superadmin: '/superadmin',
+  diagnostics: '/diagnostics',
+};
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -46,17 +54,21 @@ export default function SignInPage() {
         throw new Error(errorData.error || 'Session creation failed.');
       }
 
-      const { role } = await res.json();
+      const { role } = await res.json(); // The role comes from the backend
 
-      if (!role) {
+      if (!role || !rolePaths[role]) {
         await signOut(auth);
-        throw new Error('Role not found for this user.');
+        throw new Error('Role not found or invalid for this user.');
       }
 
-      const dashboardPath = `/${role}/dashboard`;
-      router.push(dashboardPath);
+      // Use the rolePaths map to get the correct base path
+      const basePath = rolePaths[role];
+      const dashboardPath = `${basePath}/dashboard`;
 
-      toast({ title: 'Login Successful', description: `Welcome back!` });
+      toast({ title: 'Login Successful', description: `Welcome back! Redirecting...` });
+
+      // Redirect the user to their specific dashboard
+      router.push(dashboardPath);
 
     } catch (error: any) {
       let errorMessage = 'Invalid email or password.';
