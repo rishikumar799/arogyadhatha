@@ -12,14 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
-const rolePaths: { [key: string]: string } = {
-  patient: '/patients',
-  doctor: '/doctor/dashboard',
-  receptionist: '/receptionist/dashboard',
-  superadmin: '/superadmin/dashboard',
-  diagnostics: '/diagnostics/dashboard',
-};
-
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,16 +44,14 @@ export default function SignInPage() {
         throw new Error(errorData.error || 'Session creation failed.');
       }
 
-      const { role } = await res.json();
+      toast({ title: 'Login Successful', description: 'Welcome back! Redirecting...' });
 
-      if (!role || !rolePaths[role]) {
-        throw new Error('Role not found or invalid for this user.');
-      }
-
-      toast({ title: 'Login Successful', description: `Welcome back! Redirecting...` });
-
-      const dashboardPath = rolePaths[role];
-      router.push(dashboardPath);
+      // The final, correct solution as you identified.
+      // Force a hard reload to the homepage, allowing the middleware to 
+      // intercept the request, verify the new session, and redirect correctly.
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1200);
 
     } catch (error: any) {
       let errorMessage = 'An unexpected error occurred.';
@@ -77,7 +67,7 @@ export default function SignInPage() {
         description: errorMessage,
       });
     } finally {
-      setIsLoading(false);
+      // We don't set isLoading to false here, because the page will be reloading.
     }
   };
 
