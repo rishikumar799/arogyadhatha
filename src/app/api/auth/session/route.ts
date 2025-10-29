@@ -1,7 +1,6 @@
 
 import { NextResponse } from 'next/server';
 import admin from '@/lib/firebase-admin';
-import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
   const { idToken } = await request.json();
@@ -41,16 +40,19 @@ export async function POST(request: Request) {
     // Create the session cookie. It will now be created with the updated, correct claims.
     const sessionCookie = await admin.auth().createSessionCookie(idToken, { expiresIn });
 
+    // Create a response object to set the cookie.
+    const response = NextResponse.json({ status: 'success', role: lowercaseRole });
+
     // Set the cookie in the browser.
-    cookies().set('__session', sessionCookie, {
+    response.cookies.set('__session', sessionCookie, {
       maxAge: expiresIn / 1000,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
     });
 
-    // Return the authoritative, lowercase role to the frontend for the redirect.
-    return NextResponse.json({ status: 'success', role: lowercaseRole });
+    // Return the response.
+    return response;
 
   } catch (error) {
     console.error('Session login error:', error);

@@ -22,7 +22,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState<Role | '' > ('');
+  const [role, setRole] = useState<Role | '' >('');
   const [hospital, setHospital] = useState('');
   const [bloodGroup, setBloodGroup] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +30,7 @@ export default function SignUpPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!role) {
@@ -88,7 +88,7 @@ export default function SignUpPage() {
       setRole('');
       setHospital('');
       setBloodGroup('');
-    } catch (error) {
+    } catch (error: any) {
       toast({ variant: 'destructive', title: 'Signup Failed', description: error.message || 'Error occurred.' });
     } finally {
       setIsLoading(false);
@@ -119,7 +119,7 @@ export default function SignUpPage() {
           {/* Role */}
           <div className="grid gap-2">
             <Label htmlFor="role">Role</Label>
-            <Select onValueChange={(value) => setRole(value)} value={role}>
+            <Select onValueChange={(value) => setRole(value as Role)} value={role}>
               <SelectTrigger id="role">
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
