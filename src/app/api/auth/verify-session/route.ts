@@ -3,40 +3,27 @@ import { type NextRequest, NextResponse } from 'next/server';
 import admin from '@/lib/firebase-admin';
 
 export async function GET(request: NextRequest) {
-  let sessionCookie = request.cookies.get('__session')?.value;
-
-  if (!sessionCookie) {
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      sessionCookie = authHeader.substring(7);
-    }
-  }
+  const sessionCookie = request.cookies.get('__session')?.value || '';
 
   if (!sessionCookie) {
     return NextResponse.json({ error: 'Session cookie not found' }, { status: 401 });
   }
 
   try {
-    // Step 1: Verify the session cookie to get the user's unique ID (UID).
-    const decodedToken = await admin.auth().verifySessionCookie(sessionCookie, true);
-    const { uid } = decodedToken;
-
-    // Step 2: Fetch the user's profile directly from the Firestore database.
-    // This is the single source of truth for the user's role.
-    const userDocRef = admin.firestore().collection('users').doc(uid);
-    const userDoc = await userDocRef.get();
-
-    if (!userDoc.exists) {
-      return NextResponse.json({ error: 'User profile not found in database.' }, { status: 404 });
-    }
-
-    const userRole = userDoc.data()?.role;
+    // THE REAL FIX: Verify the session cookie and trust the claims within it.
+    // The role is baked into the session cookie when it's created.
+    // There is no need for a separate, failure-prone database lookup.
+    const decodedClaims = await admin.auth().verifySessionCookie(sessionCookie, true);
+    
+    const userRole = decodedClaims.role;
 
     if (!userRole) {
-      return NextResponse.json({ error: 'Role not found in user profile.' }, { status: 403 });
+      // This would mean the session cookie was created without a role, which is an issue
+      // in the session creation logic itself.
+      return NextResponse.json({ error: 'Role not found in session claims.' }, { status: 403 });
     }
 
-    // Step 3: Return the authoritative role from the database.
+    // Return the authoritative role from the session cookie itself.
     return NextResponse.json({ role: userRole.toLowerCase() }, { status: 200 });
 
   } catch (error) {

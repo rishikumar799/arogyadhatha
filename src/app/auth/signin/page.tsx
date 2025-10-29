@@ -31,7 +31,6 @@ export default function SignInPage() {
 
       const idToken = await user.getIdToken();
 
-      // This API route creates the session cookie
       const res = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -45,9 +44,9 @@ export default function SignInPage() {
 
       toast({ title: 'Login Successful', description: 'Welcome back! Redirecting...' });
 
-      // Refresh the page. The middleware, which now runs on this auth page,
-      // will see the new session cookie and perform the redirect.
-      router.refresh();
+      // THE FINAL FIX: Force a navigation to a protected route.
+      // The middleware will intercept this, see the session cookie, and redirect to the correct dashboard.
+      router.push('/');
 
     } catch (error: any) {
       console.error('Sign-in error:', error.message);
