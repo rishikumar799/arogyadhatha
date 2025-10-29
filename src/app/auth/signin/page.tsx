@@ -12,6 +12,14 @@ import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
+const rolePaths: { [key: string]: string } = {
+  patient: '/patients',
+  doctor: '/doctor',
+  receptionist: '/receptionist',
+  superadmin: '/superadmin',
+  diagnostics: '/diagnostics',
+};
+
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,16 +52,22 @@ export default function SignInPage() {
         throw new Error(errorData.error || 'Session creation failed.');
       }
 
+      const { role } = await res.json();
+
+      if (!role || !rolePaths[role]) {
+        throw new Error('Role not found or invalid for this user.');
+      }
+
       toast({ title: 'Login Successful', description: `Welcome back! Redirecting...` });
 
-      // This is the correct, final fix.
-      // It tells Next.js to re-run its routing logic.
-      // The middleware (which is now fixed) will see the user is logged in 
-      // on the signin page and correctly redirect them to their dashboard.
-      router.refresh();
+      // THE FINAL FIX: Use client-side navigation via router.push().
+      // This is the standard Next.js pattern. It cleanly navigates to the new page
+      // without a hard reload, allowing the middleware to correctly process the new session.
+      const dashboardPath = `${rolePaths[role]}/dashboard`;
+      router.push(dashboardPath);
 
     } catch (error: any) {
-      let errorMessage = 'Invalid email or password.';
+      let errorMessage = 'An unexpected error occurred.';
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         errorMessage = 'Invalid email or password.';
       } else if (error.message) {
