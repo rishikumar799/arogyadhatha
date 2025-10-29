@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -21,7 +22,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState<Role | '' >('');
+  const [role, setRole] = useState<Role | '' > ('');
   const [hospital, setHospital] = useState('');
   const [bloodGroup, setBloodGroup] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +30,7 @@ export default function SignUpPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!role) {
@@ -47,52 +48,35 @@ export default function SignUpPage() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
-      const idToken = await userCredential.user.getIdToken();
+
+      const userData = {
+        uid,
+        firstName,
+        lastName,
+        email,
+        role: role.toLowerCase(), // Ensure role is lowercase
+        hospital: role === 'Patient' ? '' : hospital,
+        bloodGroup: bloodGroup || '',
+        createdAt: new Date(),
+      };
 
       if (role === 'Patient') {
-        await setDoc(doc(db, 'users', uid), {
-          uid,
-          firstName,
-          lastName,
-          email,
-          role,
-          hospital: '',
-          bloodGroup: bloodGroup || '',
-          createdAt: new Date(),
-        });
-
-        const response = await fetch('/api/auth/session', {
+        // Direct entry into users collection and set custom claim
+        await setDoc(doc(db, 'users', uid), userData);
+        await fetch('/api/auth/set-role', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ idToken }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid, role: 'patient' }),
         });
-
-        if (!response.ok) {
-          throw new Error('Failed to create session');
-        }
-
-        toast({ title: 'Registration Successful', description: 'You are now logged in.' });
-        router.push('/patients/dashboard');
+        toast({ title: 'Registration Successful', description: 'You can now login.' });
+        router.push('/auth/signin');
       } else {
-        await setDoc(doc(db, 'requests', uid), {
-          uid,
-          firstName,
-          lastName,
-          email,
-          role,
-          hospital,
-          bloodGroup: bloodGroup || '',
-          status: 'Pending',
-          createdAt: new Date(),
-        });
-
+        // Send request for approval
+        await setDoc(doc(db, 'requests', uid), { ...userData, status: 'Pending' });
         toast({
           title: 'Request Submitted',
           description: 'Your registration is pending approval by Super Admin.',
         });
-
         router.push('/auth/signin');
       }
 
@@ -104,7 +88,7 @@ export default function SignUpPage() {
       setRole('');
       setHospital('');
       setBloodGroup('');
-    } catch (error: any) {
+    } catch (error) {
       toast({ variant: 'destructive', title: 'Signup Failed', description: error.message || 'Error occurred.' });
     } finally {
       setIsLoading(false);
@@ -135,7 +119,7 @@ export default function SignUpPage() {
           {/* Role */}
           <div className="grid gap-2">
             <Label htmlFor="role">Role</Label>
-            <Select onValueChange={(value: Role) => setRole(value)} value={role}>
+            <Select onValueChange={(value) => setRole(value)} value={role}>
               <SelectTrigger id="role">
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
@@ -165,7 +149,7 @@ export default function SignUpPage() {
           {/* Blood group (optional) */}
           <div className="grid gap-2">
             <Label htmlFor="bloodGroup">Blood Group (Optional)</Label>
-            <Select onValueChange={(value: string) => setBloodGroup(value)} value={bloodGroup}>
+            <Select onValueChange={(value) => setBloodGroup(value)} value={bloodGroup}>
               <SelectTrigger id="bloodGroup">
                 <SelectValue placeholder="Select Blood Group" />
               </SelectTrigger>

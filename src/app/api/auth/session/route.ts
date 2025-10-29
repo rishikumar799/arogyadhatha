@@ -1,27 +1,35 @@
 
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { auth } from 'firebase-admin';
-import { initAdmin } from '@/lib/firebase-admin';
+import admin from '@/lib/firebase-admin';
 
 export async function POST(request: Request) {
-  await initAdmin();
   const { idToken } = await request.json();
 
   try {
-    const decodedToken = await auth().verifyIdToken(idToken);
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+
+    // Get user role from Firestore
+    const db = admin.firestore();
+    const userDocRef = db.collection('users').doc(uid);
+    const userDoc = await userDocRef.get();
+    
+    if (!userDoc.exists) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const role = userDoc.data()?.role || 'patient'; // Default to patient
+
+    // Create session cookie
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
-    const sessionCookie = await auth().createSessionCookie(idToken, { expiresIn });
+    const sessionCookie = await admin.auth().createSessionCookie(idToken, { expiresIn });
 
-    cookies().set('__session', sessionCookie, {
-      maxAge: expiresIn,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-    });
+    const response = NextResponse.json({ role });
+    response.cookies.set('__session', sessionCookie, { path: '/', httpOnly: true, secure: process.env.NODE_ENV === 'production' });
 
-    return NextResponse.json({ status: 'success' });
+    return response;
   } catch (error) {
-    return NextResponse.json({ status: 'error', message: 'Internal Server Error' }, { status: 500 });
+    console.error('Session login error:', error);
+    return NextResponse.json({ error: 'Failed to create session' }, { status: 401 });
   }
 }
