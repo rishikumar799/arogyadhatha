@@ -13,9 +13,11 @@ export async function POST(request: Request) {
   const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
 
   try {
+    // First, verify the token to get the UID.
     const decodedIdToken = await admin.auth().verifyIdToken(idToken);
     const { uid } = decodedIdToken;
 
+    // Then, fetch the user's document from Firestore to get the authoritative role.
     const userDocRef = admin.firestore().collection('users').doc(uid);
     const userDoc = await userDocRef.get();
 
@@ -29,15 +31,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Role not found for this user.' }, { status: 403 });
     }
 
-    // THE DEFINITIVE FIX: Enforce lowercase role consistency at the source.
+    // CRITICAL FIX: Always convert the role to lowercase.
     const lowercaseRole = userRoleFromDb.toLowerCase();
 
-    // Update the user's custom claims with this consistent, lowercase role.
+    // CRITICAL FIX: Update the custom claims with the lowercase role BEFORE creating the session cookie.
+    // This ensures the middleware will see the same lowercase role.
     await admin.auth().setCustomUserClaims(uid, { role: lowercaseRole });
 
-    // Create the session cookie with the verified token.
+    // Create the session cookie. It will now be created with the updated, correct claims.
     const sessionCookie = await admin.auth().createSessionCookie(idToken, { expiresIn });
 
+    // Set the cookie in the browser.
     cookies().set('__session', sessionCookie, {
       maxAge: expiresIn / 1000,
       httpOnly: true,
@@ -45,7 +49,7 @@ export async function POST(request: Request) {
       path: '/',
     });
 
-    // Return the consistent, lowercase role to the frontend.
+    // Return the authoritative, lowercase role to the frontend for the redirect.
     return NextResponse.json({ status: 'success', role: lowercaseRole });
 
   } catch (error) {

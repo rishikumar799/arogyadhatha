@@ -1,11 +1,5 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import admin from '@/lib/firebase-admin';
-
-// THE DEFINITIVE FIX: Force the middleware to run in the Node.js runtime.
-// This is required because `firebase-admin` is a Node.js library and is not
-// compatible with the default lightweight "Edge" runtime.
-export const runtime = 'nodejs';
 
 const rolePaths: { [key: string]: string } = {
   patient: '/patients',
@@ -21,60 +15,63 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionCookie = request.cookies.get('__session')?.value || '';
 
-  // Bypass for static files and API routes
+  // Bypass for API, static files, etc.
   if (pathname.startsWith('/api') || pathname.startsWith('/_next') || pathname.includes('favicon.ico')) {
     return NextResponse.next();
   }
 
-  // --- Handle Logged-Out Users ---
+  // --- LOGGED-OUT USERS ---
   if (!sessionCookie) {
-    if (publicPaths.includes(pathname)) {
-      return NextResponse.next(); // Allow access to public pages
+    if (!publicPaths.includes(pathname)) {
+      return NextResponse.redirect(new URL('/auth/signin', request.url));
     }
-    // For all other pages, redirect to sign-in
-    return NextResponse.redirect(new URL('/auth/signin', request.url));
-  }
-
-  // --- Handle Logged-In Users ---
-  try {
-    const decodedToken = await admin.auth().verifySessionCookie(sessionCookie, true);
-    const { uid } = decodedToken;
-
-    const userDocRef = admin.firestore().collection('users').doc(uid);
-    const userDoc = await userDocRef.get();
-
-    if (!userDoc.exists) {
-      throw new Error('User document not found in Firestore.');
-    }
-
-    const userRole = (userDoc.data()?.role as string)?.toLowerCase();
-
-    if (!userRole || !rolePaths[userRole]) {
-      throw new Error('Invalid or missing role in Firestore document.');
-    }
-
-    if (publicPaths.includes(pathname)) {
-      const dashboardPath = `${rolePaths[userRole]}/dashboard`;
-      return NextResponse.redirect(new URL(dashboardPath, request.url));
-    }
-
-    const allowedPath = rolePaths[userRole];
-    if (!pathname.startsWith(allowedPath)) {
-      return NextResponse.redirect(new URL(`${allowedPath}/dashboard`, request.url));
-    }
-
     return NextResponse.next();
-
-  } catch (error) {
-    console.error('Middleware Error:', error);
-    const response = NextResponse.redirect(new URL('/auth/signin', request.url));
-    response.cookies.set('__session', '', { maxAge: 0 });
-    return response;
   }
+
+  // --- LOGGED-IN USERS ---
+  // Call the verification API, passing the cookie in a robust way.
+  const verifyUrl = new URL('/api/auth/verify-session', request.url);
+  const response = await fetch(verifyUrl, {
+    headers: {
+      'Authorization': `Bearer ${sessionCookie}`,
+    },
+  });
+
+  // If verification fails, the cookie is bad. Clear it and redirect.
+  if (!response.ok) {
+    const res = NextResponse.redirect(new URL('/auth/signin', request.url));
+    res.cookies.set('__session', '', { maxAge: 0 });
+    return res;
+  }
+
+  const { role } = await response.json();
+  const userRole = role as keyof typeof rolePaths;
+
+  // If a logged-in user is on a public page, redirect them to their dashboard.
+  if (publicPaths.includes(pathname)) {
+    const dashboardPath = userRole && rolePaths[userRole] ? `${rolePaths[userRole]}/dashboard` : '/';
+    return NextResponse.redirect(new URL(dashboardPath, request.url));
+  }
+
+  // If the user role from the token is invalid, clear the session.
+  if (!userRole || !rolePaths[userRole]) {
+    const res = NextResponse.redirect(new URL('/auth/signin', request.url));
+    res.cookies.set('__session', '', { maxAge: 0 });
+    return res;
+  }
+
+  // If the user is trying to access a path that doesn't match their role, redirect.
+  const allowedPath = rolePaths[userRole];
+  if (!pathname.startsWith(allowedPath)) {
+    return NextResponse.redirect(new URL(`${allowedPath}/dashboard`, request.url));
+  }
+
+  // All checks passed. Allow the request.
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico).+)',
+    '/((?!api|_next/static|_next/image|favicon.ico).+)',
   ],
 };

@@ -12,6 +12,14 @@ import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
+const rolePaths: { [key: string]: string } = {
+  patient: '/patients',
+  doctor: '/doctor',
+  receptionist: '/receptionist',
+  superadmin: '/superadmin',
+  diagnostics: '/diagnostics',
+};
+
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,13 +52,19 @@ export default function SignInPage() {
         throw new Error(errorData.error || 'Session creation failed.');
       }
 
+      const { role } = await res.json();
+
+      if (!role || !rolePaths[role]) {
+        throw new Error('Role not found or invalid for this user.');
+      }
+
       toast({ title: 'Login Successful', description: `Welcome back! Redirecting...` });
 
-      // THE FINAL, CORRECT FIX: Use router.refresh().
-      // This tells Next.js to re-request the page from the server.
-      // Since the session cookie is now set, the (now-working) middleware
-      // will intercept the request and perform the server-side redirect.
-      router.refresh();
+      // THE FINAL FIX: Use client-side navigation via router.push().
+      // This is the standard Next.js pattern. It cleanly navigates to the new page
+      // without a hard reload, allowing the middleware to correctly process the new session.
+      const dashboardPath = `${rolePaths[role]}/dashboard`;
+      router.push(dashboardPath);
 
     } catch (error: any) {
       let errorMessage = 'An unexpected error occurred.';
@@ -65,9 +79,9 @@ export default function SignInPage() {
         title: 'Login Failed',
         description: errorMessage,
       });
+    } finally {
       setIsLoading(false);
     }
-    // Do not set isLoading to false here on success, because the page will be redirecting.
   };
 
   return (
