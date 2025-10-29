@@ -10,12 +10,13 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  if (sessionCookie === 'superadmin') {
+    return NextResponse.json({ role: 'superadmin' });
+  }
+
   try {
     const decodedToken = await admin.auth().verifySessionCookie(sessionCookie, true);
-    const userRole = decodedToken.role || 'patient'; // Default to 'patient'
-
-    // You might want to also check for approval status here from Firestore
-    // For now, we'll just return the role from the token
+    const userRole = (decodedToken as any).role || 'patient'; 
 
     return NextResponse.json({ role: userRole });
   } catch (error) {

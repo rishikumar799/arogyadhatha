@@ -11,7 +11,9 @@ import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -36,25 +38,41 @@ export default function SignInPage() {
   const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'superadmin@example.com';
   const SUPER_ADMIN_PASSWORD = process.env.NEXT_PUBLIC_SUPER_ADMIN_PASSWORD || 'SuperSecret123';
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
       let idToken;
-      // Super Admin login
+      let role = 'patient';
+
       if (email === SUPER_ADMIN_EMAIL && password === SUPER_ADMIN_PASSWORD) {
-        idToken = 'superadmin'; // Special case for superadmin
+        idToken = 'superadmin'; 
+        role = 'superadmin';
       } else {
-        // Regular user sign-in
         const userCredential = await signIn(email, password);
         if (!userCredential?.user) {
           throw new Error('No user data received');
         }
+
+        const userDocRef = doc(db, 'users', userCredential.user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (!userDoc.exists()) {
+          toast({
+            title: 'Request Pending',
+            description: 'Your registration request is still pending approval.',
+          });
+          await signOut(auth);
+          setIsLoading(false);
+          return;
+        }
+
         idToken = await userCredential.user.getIdToken(true);
+        const tokenResult = await userCredential.user.getIdTokenResult();
+        role = (tokenResult.claims.role as string) || 'patient';
       }
 
-      // Set session cookie via API route
       const res = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,14 +84,13 @@ export default function SignInPage() {
         throw new Error(body?.error || 'Session creation failed');
       }
 
-      const { role } = await res.json();
+      const sessionData = await res.json();
 
-      // Redirect to the appropriate dashboard
-      const dashboard = `/${role}/dashboard`;
+      const dashboard = `/${sessionData.role || role}/dashboard`;
       router.push(dashboard);
       toast({ title: 'Login Successful', description: `Welcome back!` });
 
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Login Failed',
