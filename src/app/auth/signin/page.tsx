@@ -8,10 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
-// This mapping must match the one in the middleware
 const rolePaths: { [key: string]: string } = {
   patient: '/patients',
   doctor: '/doctor',
@@ -54,16 +53,13 @@ export default function SignInPage() {
       const { role } = await res.json();
 
       if (!role || !rolePaths[role]) {
-        await signOut(auth);
         throw new Error('Role not found or invalid for this user.');
       }
 
-      const basePath = rolePaths[role];
-      const dashboardPath = `${basePath}/dashboard`;
-
       toast({ title: 'Login Successful', description: `Welcome back! Redirecting...` });
 
-      // Force a hard redirect to the dashboard
+      // Force a hard browser redirect. This is the most reliable method.
+      const dashboardPath = `${rolePaths[role]}/dashboard`;
       window.location.href = dashboardPath;
 
     } catch (error: any) {
