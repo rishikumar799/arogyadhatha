@@ -13,33 +13,35 @@ export async function POST(request: Request) {
   const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
 
   try {
-    // Verify the ID token to get the user's UID
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { uid } = decodedToken;
+    // First, verify the token to get the UID.
+    const decodedIdToken = await admin.auth().verifyIdToken(idToken);
+    const { uid } = decodedIdToken;
 
-    // Fetch the user's document from Firestore to get their role
+    // Then, fetch the user's document from Firestore to get the authoritative role.
     const userDocRef = admin.firestore().collection('users').doc(uid);
     const userDoc = await userDocRef.get();
 
     if (!userDoc.exists) {
-      console.error(`No user document found in Firestore for UID: ${uid}`);
       return NextResponse.json({ error: 'User profile not found in database.' }, { status: 404 });
     }
 
-    const userRole = userDoc.data()?.role;
+    const userRoleFromDb = userDoc.data()?.role;
 
-    if (!userRole) {
-      console.error(`User document for UID: ${uid} is missing the 'role' field.`);
+    if (!userRoleFromDb) {
       return NextResponse.json({ error: 'Role not found for this user.' }, { status: 403 });
     }
 
-    // (Optional but good practice) Ensure the custom claim is set correctly for future use
-    await admin.auth().setCustomUserClaims(uid, { role: userRole });
+    // CRITICAL FIX: Always convert the role to lowercase.
+    const lowercaseRole = userRoleFromDb.toLowerCase();
 
-    // Create the session cookie
+    // CRITICAL FIX: Update the custom claims with the lowercase role BEFORE creating the session cookie.
+    // This ensures the middleware will see the same lowercase role.
+    await admin.auth().setCustomUserClaims(uid, { role: lowercaseRole });
+
+    // Create the session cookie. It will now be created with the updated, correct claims.
     const sessionCookie = await admin.auth().createSessionCookie(idToken, { expiresIn });
 
-    // Set the session cookie in the browser
+    // Set the cookie in the browser.
     cookies().set('__session', sessionCookie, {
       maxAge: expiresIn / 1000,
       httpOnly: true,
@@ -47,11 +49,11 @@ export async function POST(request: Request) {
       path: '/',
     });
 
-    // Return the authoritative role from the database
-    return NextResponse.json({ status: 'success', role: userRole });
+    // Return the authoritative, lowercase role to the frontend for the redirect.
+    return NextResponse.json({ status: 'success', role: lowercaseRole });
 
   } catch (error) {
     console.error('Session login error:', error);
-    return NextResponse.json({ error: 'Failed to create session' }, { status: 401 });
+    return NextResponse.json({ error: 'Failed to create session.' }, { status: 401 });
   }
 }
