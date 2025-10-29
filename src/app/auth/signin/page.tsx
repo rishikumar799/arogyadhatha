@@ -33,7 +33,6 @@ export default function SignInPage() {
 
       const idToken = await user.getIdToken();
 
-      // Create the session cookie
       const res = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -47,14 +46,15 @@ export default function SignInPage() {
 
       toast({ title: 'Login Successful', description: `Welcome back! Redirecting...` });
 
-      // THE FIX: Instead of a hard redirect, refresh the page.
-      // This triggers the middleware, which is the single source of truth for routing.
-      // The middleware will see the user is logged in and redirect to the dashboard.
+      // This is the correct, final fix.
+      // It tells Next.js to re-run its routing logic.
+      // The middleware (which is now fixed) will see the user is logged in 
+      // on the signin page and correctly redirect them to their dashboard.
       router.refresh();
 
     } catch (error: any) {
       let errorMessage = 'Invalid email or password.';
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         errorMessage = 'Invalid email or password.';
       } else if (error.message) {
         errorMessage = error.message;
