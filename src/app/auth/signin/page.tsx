@@ -8,12 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +31,7 @@ export default function SignInPage() {
 
       const idToken = await user.getIdToken();
 
+      // This API route creates the session cookie
       const res = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -40,14 +43,11 @@ export default function SignInPage() {
         throw new Error(errorData.error || 'Session creation failed.');
       }
 
-      const { role } = await res.json();
-
       toast({ title: 'Login Successful', description: 'Welcome back! Redirecting...' });
 
-      // THE FIX: Redirect directly to the final dashboard URL.
-      // This avoids the double-redirect issue by navigating straight to the destination.
-      const dashboardPath = `/${role.toLowerCase()}/dashboard`;
-      window.location.href = dashboardPath;
+      // Refresh the page. The middleware, which now runs on this auth page,
+      // will see the new session cookie and perform the redirect.
+      router.refresh();
 
     } catch (error: any) {
       console.error('Sign-in error:', error.message);
@@ -71,7 +71,7 @@ export default function SignInPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="superadmin@example.com"
+              placeholder="user@example.com"
               required
             />
           </div>
