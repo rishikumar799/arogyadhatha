@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,18 +12,11 @@ import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
-const rolePaths: { [key: string]: string } = {
-  patient: '/patients',
-  doctor: '/doctor',
-  receptionist: '/receptionist',
-  superadmin: '/superadmin',
-  diagnostics: '/diagnostics',
-};
-
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,6 +33,7 @@ export default function SignInPage() {
 
       const idToken = await user.getIdToken();
 
+      // Create the session cookie
       const res = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,17 +45,12 @@ export default function SignInPage() {
         throw new Error(errorData.error || 'Session creation failed.');
       }
 
-      const { role } = await res.json();
-
-      if (!role || !rolePaths[role]) {
-        throw new Error('Role not found or invalid for this user.');
-      }
-
       toast({ title: 'Login Successful', description: `Welcome back! Redirecting...` });
 
-      // Force a hard browser redirect. This is the most reliable method.
-      const dashboardPath = `${rolePaths[role]}/dashboard`;
-      window.location.href = dashboardPath;
+      // THE FIX: Instead of a hard redirect, refresh the page.
+      // This triggers the middleware, which is the single source of truth for routing.
+      // The middleware will see the user is logged in and redirect to the dashboard.
+      router.refresh();
 
     } catch (error: any) {
       let errorMessage = 'Invalid email or password.';
