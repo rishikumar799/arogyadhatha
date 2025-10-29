@@ -48,6 +48,7 @@ export async function POST(request: Request) {
       maxAge: expiresIn / 1000,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict', // 👈 this helps Next.js middleware recognize it
       path: '/',
     });
 

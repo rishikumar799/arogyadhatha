@@ -11,11 +11,22 @@ const rolePaths: { [key: string]: string } = {
 
 const publicPaths = ['/auth/signin', '/auth/signup', '/'];
 
+// Helper to get the correct dashboard path based on role
+const getDashboardPath = (role: keyof typeof rolePaths | undefined) => {
+  if (!role || !rolePaths[role]) {
+    return '/'; // Default to home page if role is invalid
+  }
+  // The patient dashboard is at /patients, not /patients/dashboard
+  if (role === 'patient') {
+    return rolePaths.patient;
+  }
+  return `${rolePaths[role]}/dashboard`;
+};
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionCookie = request.cookies.get('__session')?.value || '';
 
-  // Bypass for API, static files, etc.
   if (pathname.startsWith('/api') || pathname.startsWith('/_next') || pathname.includes('favicon.ico')) {
     return NextResponse.next();
   }
@@ -29,15 +40,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // --- LOGGED-IN USERS ---
-  // Call the verification API, passing the cookie in a robust way.
   const verifyUrl = new URL('/api/auth/verify-session', request.url);
   const response = await fetch(verifyUrl, {
-    headers: {
-      'Authorization': `Bearer ${sessionCookie}`,
-    },
+    headers: { 'Authorization': `Bearer ${sessionCookie}` },
   });
 
-  // If verification fails, the cookie is bad. Clear it and redirect.
   if (!response.ok) {
     const res = NextResponse.redirect(new URL('/auth/signin', request.url));
     res.cookies.set('__session', '', { maxAge: 0 });
@@ -47,26 +54,25 @@ export async function middleware(request: NextRequest) {
   const { role } = await response.json();
   const userRole = role as keyof typeof rolePaths;
 
-  // If a logged-in user is on a public page, redirect them to their dashboard.
+  // Redirect logged-in users from public pages to their dashboard
   if (publicPaths.includes(pathname)) {
-    const dashboardPath = userRole && rolePaths[userRole] ? `${rolePaths[userRole]}/dashboard` : '/';
+    const dashboardPath = getDashboardPath(userRole);
     return NextResponse.redirect(new URL(dashboardPath, request.url));
   }
 
-  // If the user role from the token is invalid, clear the session.
   if (!userRole || !rolePaths[userRole]) {
     const res = NextResponse.redirect(new URL('/auth/signin', request.url));
     res.cookies.set('__session', '', { maxAge: 0 });
     return res;
   }
 
-  // If the user is trying to access a path that doesn't match their role, redirect.
+  // If a user is on a path not allowed for their role, redirect to their dashboard
   const allowedPath = rolePaths[userRole];
   if (!pathname.startsWith(allowedPath)) {
-    return NextResponse.redirect(new URL(`${allowedPath}/dashboard`, request.url));
+    const dashboardPath = getDashboardPath(userRole);
+    return NextResponse.redirect(new URL(dashboardPath, request.url));
   }
 
-  // All checks passed. Allow the request.
   return NextResponse.next();
 }
 

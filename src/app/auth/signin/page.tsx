@@ -14,10 +14,10 @@ import { auth } from '@/lib/firebase';
 
 const rolePaths: { [key: string]: string } = {
   patient: '/patients',
-  doctor: '/doctor',
-  receptionist: '/receptionist',
-  superadmin: '/superadmin',
-  diagnostics: '/diagnostics',
+  doctor: '/doctor/dashboard',
+  receptionist: '/receptionist/dashboard',
+  superadmin: '/superadmin/dashboard',
+  diagnostics: '/diagnostics/dashboard',
 };
 
 export default function SignInPage() {
@@ -60,10 +60,7 @@ export default function SignInPage() {
 
       toast({ title: 'Login Successful', description: `Welcome back! Redirecting...` });
 
-      // THE FINAL FIX: Use client-side navigation via router.push().
-      // This is the standard Next.js pattern. It cleanly navigates to the new page
-      // without a hard reload, allowing the middleware to correctly process the new session.
-      const dashboardPath = `${rolePaths[role]}/dashboard`;
+      const dashboardPath = rolePaths[role];
       router.push(dashboardPath);
 
     } catch (error: any) {
