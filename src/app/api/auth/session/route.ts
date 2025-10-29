@@ -12,47 +12,57 @@ export async function POST(request: Request) {
   const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
 
   try {
-    // First, verify the token to get the UID.
     const decodedIdToken = await admin.auth().verifyIdToken(idToken);
-    const { uid } = decodedIdToken;
+    const { uid, email } = decodedIdToken;
 
-    // Then, fetch the user's document from Firestore to get the authoritative role.
     const userDocRef = admin.firestore().collection('users').doc(uid);
     const userDoc = await userDocRef.get();
 
+    let userRole: string;
+
+    // THE FIX: If the user document does not exist in Firestore, create it.
     if (!userDoc.exists) {
-      return NextResponse.json({ error: 'User profile not found in database.' }, { status: 404 });
+      // Determine the role for the new user.
+      // If it's the special superadmin email, assign the 'superadmin' role.
+      if (email === process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL) {
+        userRole = 'superadmin';
+      } else {
+        // Otherwise, default to 'patient' for all other new users.
+        userRole = 'patient';
+      }
+
+      // Create the user document in Firestore with their email and new role.
+      await userDocRef.set({
+        email: email,
+        role: userRole,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+    } else {
+      // If the user document exists, get their role from the database.
+      const existingRole = userDoc.data()?.role;
+      if (!existingRole) {
+        return NextResponse.json({ error: 'Role not found for existing user.' }, { status: 403 });
+      }
+      userRole = existingRole;
     }
 
-    const userRoleFromDb = userDoc.data()?.role;
+    const lowercaseRole = userRole.toLowerCase();
 
-    if (!userRoleFromDb) {
-      return NextResponse.json({ error: 'Role not found for this user.' }, { status: 403 });
-    }
-
-    // CRITICAL FIX: Always convert the role to lowercase.
-    const lowercaseRole = userRoleFromDb.toLowerCase();
-
-    // CRITICAL FIX: Update the custom claims with the lowercase role BEFORE creating the session cookie.
-    // This ensures the middleware will see the same lowercase role.
+    // Set the role as a custom claim on the user's auth token.
     await admin.auth().setCustomUserClaims(uid, { role: lowercaseRole });
 
-    // Create the session cookie. It will now be created with the updated, correct claims.
     const sessionCookie = await admin.auth().createSessionCookie(idToken, { expiresIn });
-
-    // Create a response object to set the cookie.
     const response = NextResponse.json({ status: 'success', role: lowercaseRole });
 
-    // Set the cookie in the browser.
     response.cookies.set('__session', sessionCookie, {
       maxAge: expiresIn / 1000,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict', // 👈 this helps Next.js middleware recognize it
+      sameSite: 'strict',
       path: '/',
     });
 
-    // Return the response.
     return response;
 
   } catch (error) {
