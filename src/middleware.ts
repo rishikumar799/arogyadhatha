@@ -90,7 +90,7 @@ function getDashboardPath(role: string): string {
     doctor: '/doctor/dashboard',
     receptionist: '/receptionist/dashboard',
     diagnostics: '/diagnostics/dashboard',
-    patient: '/patients',
+   
   };
   return dashboards[role] || '/';
 }
