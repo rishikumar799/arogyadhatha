@@ -8,14 +8,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+
+function getDashboardPath(role: string): string {
+  const dashboards: { [key: string]: string } = {
+    superadmin: '/superadmin',
+    doctor: '/doctor',
+    receptionist: '/receptionist',
+    diagnostics: '/diagnostics',
+    patient: '/patients',
+  };
+  return dashboards[role.toLowerCase()] || '/';
+}
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,10 +33,7 @@ export default function SignInPage() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      if (!user) {
-        throw new Error('Authentication failed. Please try again.');
-      }
+      if (!user) throw new Error('Firebase user not found.');
 
       const idToken = await user.getIdToken();
 
@@ -39,17 +45,22 @@ export default function SignInPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || 'Session creation failed.');
+        throw new Error(errorData.error || 'Session creation API failed.');
       }
 
-      toast({ title: 'Login Successful', description: 'Welcome back! Redirecting...' });
+      const { role } = await res.json();
+      if (!role) throw new Error('Role not found in API response.');
+      
+      const dashboardPath = getDashboardPath(role);
 
-      // THE FINAL FIX: Force a navigation to a protected route.
-      // The middleware will intercept this, see the session cookie, and redirect to the correct dashboard.
-      router.push('/');
+      toast({ title: 'Login Successful', description: 'Redirecting...' });
+
+      // Add the `?from=signin` query parameter to the URL.
+      // This will act as a "hall pass" for the middleware.
+      window.location.href = `${dashboardPath}?from=signin`;
 
     } catch (error: any) {
-      console.error('Sign-in error:', error.message);
+      console.error('SIGN-IN ERROR:', error.message);
       toast({ title: 'Login Failed', description: error.message, variant: 'destructive' });
       setIsLoading(false);
     }

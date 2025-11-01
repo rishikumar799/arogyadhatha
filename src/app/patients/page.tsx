@@ -318,6 +318,7 @@ export default function DashboardPage() {
                 alt="Get it on Google Play"
                 width={150}
                 height={50}
+                style={{ height: 'auto' }}
                 data-ai-hint="google play badge"
               />
             </Link>
@@ -327,6 +328,7 @@ export default function DashboardPage() {
                 alt="Download on the App Store"
                 width={134}
                 height={50}
+                style={{ height: 'auto' }}
                 data-ai-hint="app store badge"
               />
             </Link>
