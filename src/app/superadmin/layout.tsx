@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   Building2,
   Users,
@@ -14,10 +13,11 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context'; // We still need this for logout
 
+// Corrected Navigation Items
 const navItems = [
-  { href: '/superadmin/dashboard', label: 'Dashboard', icon: FileBarChart },
+  { href: '/superadmin', label: 'Dashboard', icon: FileBarChart }, // Corrected path
   { href: '/superadmin/hospitals', label: 'Hospitals (Sub Admins)', icon: Building2 },
   { href: '/superadmin/users', label: 'Manage Users', icon: Users },
   { href: '/superadmin/requests', label: 'Requests', icon: ClipboardList },
@@ -26,28 +26,13 @@ const navItems = [
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { userProfile, loading, signOut } = useAuth();
-
-  useEffect(() => {
-    if (!loading) {
-      if (!userProfile || userProfile.role !== 'superadmin') {
-        router.replace('/auth/signin?error=Not+Authorized');
-      }
-    }
-  }, [userProfile, loading, router]);
+  const { signOut } = useAuth(); // Only need signOut
 
   const handleLogout = async () => {
     await signOut();
+    // After sign out, redirect to login. This is safe.
+    window.location.href = '/auth/signin';
   };
-
-  if (loading || !userProfile || userProfile.role !== 'superadmin') {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-muted/30">
@@ -59,7 +44,11 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
         <nav className="flex-1 p-4 space-y-2">
           {navItems.map((item) => {
-            const isActive = pathname.startsWith(item.href);
+            // The check needs to be exact for the root dashboard link
+            const isActive = item.href === '/superadmin' 
+              ? pathname === item.href 
+              : pathname.startsWith(item.href);
+              
             return (
               <Link
                 key={item.href}

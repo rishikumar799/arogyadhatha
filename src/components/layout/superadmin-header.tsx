@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react'; // Import useState
 import {
   Menu,
   CircleUser,
@@ -34,13 +35,34 @@ const navItems = [
       { href: '/superadmin/settings', label: 'Settings', icon: Settings },
   ];
 
+  // A single, reusable sign-out handler
+  async function handleSignOut(router: ReturnType<typeof useRouter>) {
+      try {
+          const response = await fetch('/api/auth/signout', { method: 'POST' });
+          if (response.ok) {
+              // Force a full page reload to ensure all state is cleared
+              window.location.href = '/auth/signin';
+          } else {
+              console.error('Logout failed:', await response.json());
+              // Fallback for router push if window reload fails for some reason
+              router.push('/auth/signin');
+          }
+      } catch (error) {
+          console.error('Error during logout:', error);
+          router.push('/auth/signin');
+      }
+  }
+
 function MobileNav() {
     const pathname = usePathname();
     const router = useRouter();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-    const handleLogout = () => {
-        document.cookie = "superAdminSession=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        router.push('/auth/signin');
+    const handleLogoutClick = async () => {
+        if (isLoggingOut) return;
+        setIsLoggingOut(true);
+        await handleSignOut(router);
+        setIsLoggingOut(false);
     };
 
     return (
@@ -50,6 +72,7 @@ function MobileNav() {
             variant="outline"
             size="icon"
             className="shrink-0 md:hidden"
+            disabled={isLoggingOut}
           >
             <Menu className="h-5 w-5" />
             <span className="sr-only">Toggle navigation menu</span>
@@ -92,11 +115,12 @@ function MobileNav() {
                     </Link>
                     ))}
                      <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                        onClick={handleLogoutClick}
+                        disabled={isLoggingOut}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary disabled:opacity-50"
                     >
                         <LogOut className="h-4 w-4" />
-                        Logout
+                        {isLoggingOut ? 'Logging out...' : 'Logout'}
                     </button>
                 </nav>
             </div>
@@ -107,10 +131,13 @@ function MobileNav() {
 
 export default function SuperAdminHeader() {
     const router = useRouter();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-    const handleLogout = () => {
-        document.cookie = "superAdminSession=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        router.push('/auth/signin');
+    const handleLogoutClick = async () => {
+        if (isLoggingOut) return;
+        setIsLoggingOut(true);
+        await handleSignOut(router);
+        // No need to set isLoggingOut to false, as the page will be unloaded.
     };
 
   return (
@@ -132,7 +159,9 @@ export default function SuperAdminHeader() {
           <DropdownMenuItem asChild><Link href="/superadmin/editprofile">Edit Profile</Link></DropdownMenuItem>
           <DropdownMenuItem asChild><Link href="/superadmin/settings">Settings</Link></DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
+          <DropdownMenuItem onClick={handleLogoutClick} disabled={isLoggingOut}>
+            {isLoggingOut ? 'Logging out...' : 'Logout'}
+            </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>

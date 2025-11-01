@@ -31,33 +31,38 @@ export default function SignInPage() {
     setIsLoading(true);
 
     try {
+      // 1. Authenticate with Firebase
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      if (!user) throw new Error('Firebase user not found.');
+      if (!user) throw new Error('Firebase user authentication failed.');
 
       const idToken = await user.getIdToken();
 
+      // 2. Call the session API to create the cookie
       const res = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Session creation API failed.');
+        throw new Error(data.error || 'Session API call failed. Please check server logs.');
       }
 
-      const { role } = await res.json();
-      if (!role) throw new Error('Role not found in API response.');
+      const { role } = data;
+      if (!role) {
+        throw new Error('Role is missing from the API response.');
+      }
       
       const dashboardPath = getDashboardPath(role);
 
-      toast({ title: 'Login Successful', description: 'Redirecting...' });
+      toast({ title: 'Login Successful', description: 'Redirecting to your dashboard...' });
 
-      // Add the `?from=signin` query parameter to the URL.
-      // This will act as a "hall pass" for the middleware.
-      window.location.href = `${dashboardPath}?from=signin`;
+      // 3. Perform a full page redirect. This is the most robust method
+      // to ensure the browser has processed the session cookie before the next page loads.
+      window.location.href = dashboardPath;
 
     } catch (error: any) {
       console.error('SIGN-IN ERROR:', error.message);
@@ -97,7 +102,7 @@ export default function SignInPage() {
             />
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Signing In...' : 'Login'}
+            {isLoading ? 'Signing In...' : 'Sign In'}
           </Button>
         </form>
         <div className="text-center">
