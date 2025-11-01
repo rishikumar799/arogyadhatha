@@ -1,3 +1,4 @@
+
 import { NextResponse, type NextRequest } from 'next/server';
 
 export const config = {
@@ -42,7 +43,10 @@ export async function middleware(request: NextRequest) {
 
   // For all other pages, protect them.
   if (!sessionCookie) {
-    return NextResponse.redirect(new URL('/auth/signin', request.url));
+    if (currentPath !== '/auth/signin') {
+      return NextResponse.redirect(new URL('/auth/signin', request.url));
+    }
+    return NextResponse.next();
   }
 
   try {
@@ -59,18 +63,17 @@ export async function middleware(request: NextRequest) {
     const userRole = role?.toLowerCase();
 
     if (!userRole) {
-      throw new Error('Role not found in session');
+      throw newError('Role not found in session');
     }
 
     const expectedDashboardPath = getDashboardPath(userRole);
-    const inCorrectDashboard = currentPath.startsWith(expectedDashboardPath);
-    
-    // Handle the case where the patient dashboard is also the root of the /patients section
-    if(userRole === 'patient' && currentPath === '/patients') {
+
+    if (currentPath.startsWith('/api')) {
       return NextResponse.next();
     }
-
-    if (!inCorrectDashboard) {
+    
+    // Redirect to the correct dashboard if not already there
+    if (!currentPath.startsWith(expectedDashboardPath)) {
       return NextResponse.redirect(new URL(expectedDashboardPath, request.url));
     }
 
@@ -86,11 +89,11 @@ export async function middleware(request: NextRequest) {
 
 function getDashboardPath(role: string): string {
   const dashboards: { [key: string]: string } = {
-    superadmin: '/superadmin/dashboard',
-    doctor: '/doctor/dashboard',
-    receptionist: '/receptionist/dashboard',
-    diagnostics: '/diagnostics/dashboard',
-   
+    superadmin: '/superadmin',
+    doctor: '/doctor',
+    receptionist: '/receptionist',
+    diagnostics: '/diagnostics',
+    patient: '/patients',
   };
   return dashboards[role] || '/';
 }

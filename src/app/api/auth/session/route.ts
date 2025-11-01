@@ -1,6 +1,6 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import admin from '@/lib/firebase-admin'; // Corrected import
+import admin from '@/lib/firebase-admin'; 
 
 const SEVEN_DAYS_IN_SECONDS = 7 * 24 * 60 * 60;
 
