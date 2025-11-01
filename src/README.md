@@ -1,4 +1,4 @@
-# Arogyadhatha: Your Comprehensive Health Companion
+# Arogyadhatha: Your Comprehensive Health Companion with full features
 
 ## Introduction
 
