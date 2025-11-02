@@ -11,9 +11,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/signin', request.url));
   }
 
-  // If logged in and trying to access an auth page (like sign-in), redirect to the dashboard
+  // If logged in and trying to access an auth page (like sign-in or sign-up),
+  // redirect to the main homepage. The homepage will then handle redirecting
+  // them to their specific dashboard based on their role.
   if (session && isAuthPage) {
-    return NextResponse.redirect(new URL('/patients', request.url));
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   return NextResponse.next();

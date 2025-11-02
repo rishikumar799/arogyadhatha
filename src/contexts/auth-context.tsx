@@ -1,21 +1,25 @@
 'use client';
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { getRedirectResult, onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../lib/firebase'; // CORRECTED: Import auth directly
+import { Loader2 } from 'lucide-react';
 
-// Define the structure of the user profile derived from the session
+// Define the UserProfile structure
 interface UserProfile {
   role: string;
 }
 
-// Define the context type
+// Define the AuthContext structure
 interface AuthContextType {
   userProfile: UserProfile | null;
   loading: boolean;
-  error: string | null; // Add state for holding the error message
+  error: string | null;
   signOut: () => Promise<void>;
 }
 
-// Create the context with a default value
+// Create the authentication context
 const AuthContext = createContext<AuthContextType>({
   userProfile: null,
   loading: true,
@@ -23,83 +27,112 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
-// Create the AuthProvider component
+// The main authentication provider component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null); // State to hold the error
-  const pathname = usePathname();
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    const verifySession = async () => {
-      setError(null); // Clear previous errors on navigation
-      
-      if (pathname.startsWith('/auth')) {
-        setLoading(false);
-        return;
-      }
+    // NOTE: We no longer need getAuth(app) because auth is imported directly.
 
-      try {
-        const res = await fetch('/api/auth/verify-session');
-        const data = await res.json();
+    // First, handle the result of a sign-in redirect.
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result) {
+          // A user has just signed in. Create their session.
+          const idToken = await result.user.getIdToken();
+          const response = await fetch('/api/auth/signin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+          });
 
-        if (!res.ok) {
-          // If the response is not OK, throw an error with the detailed message from the server
-          throw new Error(data.error + (data.detail ? ` (Details: ${data.detail})` : ''));
+          if (response.ok) {
+            // Session created successfully. Force a hard reload to ensure
+            // the new session state is picked up cleanly.
+            window.location.assign('/');
+          } else {
+            // Failed to create session, report the error.
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Session creation failed.');
+          }
         }
-
-        setUserProfile(data as UserProfile);
-
-      } catch (err: any) {
-        console.error("Session verification failed:", err.message);
-        setError(err.message); // Set the error state so it can be displayed
-        setUserProfile(null);
-
-        // Only redirect for classic "not logged in" errors. 
-        // For server configuration errors (like 500 or 404), we want to show the error message instead of looping.
-        if (err.message.includes('Session cookie not found') || err.message.includes('Invalid or expired session cookie')) {
-            router.push('/auth/signin');
-        }
-
-      } finally {
+      })
+      .catch((err) => {
+        setError(err.message);
         setLoading(false);
-      }
-    };
+      });
 
-    verifySession();
-  }, [pathname, router]);
+    // This listener handles ongoing session verification and logouts.
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            // A Firebase user exists. Verify our backend session cookie.
+            try {
+                const response = await fetch('/api/auth/verify-session');
+                if (response.ok) {
+                    const profile = await response.json();
+                    setUserProfile(profile);
+                } else {
+                    // Session is invalid or expired. Clear local state.
+                    setUserProfile(null);
+                }
+            } catch (e: any) {
+                setError("Failed to connect to the server for session verification.");
+                setUserProfile(null);
+            }
+        } else {
+            // No Firebase user. Ensure local state is cleared.
+            setUserProfile(null);
+        }
+        setLoading(false);
+    });
 
+    // Cleanup subscription on component unmount
+    return () => unsubscribe();
+  }, []);
+
+  // This effect handles redirection based on the auth state.
+  useEffect(() => {
+    if (!loading && !userProfile && !pathname.startsWith('/auth')) {
+      router.push('/auth/signin');
+    }
+  }, [userProfile, loading, pathname, router]);
+
+  // Define the sign-out logic
   const signOut = async () => {
+    setLoading(true);
     try {
-      await fetch('/api/auth/signout', { method: 'POST' });
-    } catch (e) {
-      console.error("Signout API call failed", e);
+      await auth.signOut(); // Sign out from Firebase
+      await fetch('/api/auth/signout', { method: 'POST' }); // Sign out from backend
+    } catch (e: any) {
+      setError(e.message);
     } finally {
-      window.location.href = '/auth/signin';
+      setUserProfile(null);
+      window.location.href = '/auth/signin'; // Force redirect to sign-in
     }
   };
 
-  const value = { userProfile, loading, error, signOut };
-
-  // Now, the main view logic can decide what to show based on the state
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ userProfile, loading, error, signOut }}>
       {loading ? (
-        <div>Loading...</div> // Or a proper loading spinner
+        <div className="flex h-screen w-full items-center justify-center">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
       ) : error ? (
-        // If there's an error, display it prominently
         <div style={{ padding: '20px', color: 'red', backgroundColor: '#fdd' }}>
-          <h1>Authentication Error</h1>
-          <p>Could not verify your session. Please contact support.</p>
-          <pre><strong>Error:</strong> {error}</pre>
+            <h1>Authentication Error</h1>
+            <p>{error}</p>
+            <button onClick={signOut}>Try Signing Out</button>
         </div>
       ) : (
-        // Only render children if loading is complete and there is no error
         children
       )}
     </AuthContext.Provider>
   );
 };
 
+// Export the useAuth hook for easy consumption
 export const useAuth = () => useContext(AuthContext);

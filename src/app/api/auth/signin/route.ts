@@ -1,32 +1,47 @@
+'''
+This is the POST route for creating a session cookie.
+It exchanges an ID token from the Firebase client SDK for a session cookie.
+'''
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import admin from '@/lib/firebase-admin';
 import { getAuth } from 'firebase-admin/auth';
 
 export async function POST(request: Request) {
-  const { email, password } = await request.json();
+  const { idToken } = await request.json();
+
+  if (!idToken) {
+    return NextResponse.json({ error: 'ID token is required.' }, { status: 400 });
+  }
 
   try {
     const auth = getAuth(admin);
-    const user = await auth.getUserByEmail(email);
+    
+    // Verify the ID token to ensure it is valid.
+    const decodedToken = await auth.verifyIdToken(idToken);
+    
+    // The token is valid. Now, create the session cookie.
+    // Set session expiration to 5 days. Adjust as needed.
+    const expiresIn = 60 * 60 * 24 * 5 * 1000;
+    const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
 
-    // IMPORTANT: This is a simplified example. In a real application, 
-    // you would verify the password here. Next.js does not have a standard 
-    // way to do this with Firebase Auth out-of-the-box.
-    // You might need a custom solution or a different authentication provider.
-    if (user) {
-      // Create a session cookie
-      const sessionCookie = await auth.createSessionCookie(
-        await auth.createCustomToken(user.uid),
-        { expiresIn: 60 * 60 * 24 * 5 * 1000 }
-      );
-      cookies().set('session', sessionCookie, { httpOnly: true, secure: true });
+    // Set the cookie on the response. 
+    // The 'secure' and 'httpOnly' flags are essential for security.
+    cookies().set('session', sessionCookie, { 
+      httpOnly: true, 
+      secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+      maxAge: expiresIn, 
+      path: '/', // The cookie is available to all pages
+    });
 
-      return NextResponse.json({ success: true });
-    }
+    return NextResponse.json({ success: true, message: 'Session created successfully.' });
 
-    return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Error creating session cookie:', error);
+    // The token was invalid, expired, or there was some other Firebase error.
+    return NextResponse.json(
+      { success: false, error: 'Invalid or expired token.', detail: error.message }, 
+      { status: 401 }
+    );
   }
 }

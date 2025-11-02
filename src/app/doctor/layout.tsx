@@ -3,7 +3,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { Loader2 } from 'lucide-react';
 
-export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
+export default function DoctorLayout({ children }: { children: React.ReactNode }) {
   const { userProfile, loading } = useAuth();
 
   if (loading) {
@@ -14,7 +14,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     );
   }
 
-  if (userProfile?.role !== 'superadmin') {
+  if (userProfile?.role !== 'doctor') {
     return (
       <div className="flex h-[calc(100vh-8rem)] w-full items-center justify-center">
         <div className="text-center">
@@ -25,5 +25,6 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     );
   }
 
+  // This layout will now correctly wrap the doctor-specific pages
   return <div className="space-y-6">{children}</div>;
 }
