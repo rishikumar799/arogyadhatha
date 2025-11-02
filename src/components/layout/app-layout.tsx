@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -181,7 +180,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const viewportRef = React.useRef<HTMLDivElement>(null);
-  const [isClient, setIsClient] = React.useState(false);
   const isMobile = useIsMobile();
   const [visibleMenuItems, setVisibleMenuItems] = React.useState<MenuItem[]>([]);
   const [navSettings, setNavSettings] = React.useState<Record<string, boolean>>({});
@@ -189,7 +187,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { language, setLanguage } = useLanguage();
 
   React.useEffect(() => {
-    setIsClient(true);
     const savedNavSettings = localStorage.getItem('navSettings');
     let settings: Record<string, boolean>;
     if (savedNavSettings) {
@@ -237,24 +234,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
   
-  if (!isClient) {
-    return (
-      <div className="flex flex-col min-h-screen">
-          <header className="sticky top-0 z-20 flex items-center justify-between p-3 bg-primary text-primary-foreground gap-4 h-16">
-              <Link href="/patients" className="flex items-center gap-2">
-                  <div className="p-1.5 bg-primary-foreground rounded-lg">
-                      <Activity className="w-6 h-6 text-primary" />
-                  </div>
-                  <h1 className="text-xl font-bold">Arogyadhatha</h1>
-              </Link>
-          </header>
-          <main className="flex-1">
-              {children}
-          </main>
-      </div>
-    );
-  }
-
   const handleNavItemClick = (href: string, e: React.MouseEvent) => {
     if (href === '#') {
         e.preventDefault();
@@ -377,9 +356,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         </div>
                         <DropdownMenuSeparator />
                         <div className="p-1">
-                            <DropdownMenuItem className="p-3 text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-900/50 dark:focus:text-red-500">
+                            <DropdownMenuItem 
+                                className="p-3 text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-900/50 dark:focus:text-red-500"
+                                onClick={() => router.push('/auth/signin')}
+                            >
                                 <LogOut className="mr-3" />
-                                <span className="font-semibold">Sign out</span>
+                                <span className="font-semibold">Sign Out</span>
                             </DropdownMenuItem>
                         </div>
                     </DropdownMenuContent>
@@ -432,7 +414,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <ScrollArea className="w-full" viewportRef={viewportRef}>
                 <nav className="flex w-max py-1 px-12 justify-center">
                     {visibleMenuItems.map((item, index) => {
-                        const isActive = isClient && pathname === item.href;
+                        const isActive = pathname === item.href;
                         const isSpecial = item.label === 'Emergency' || item.label === 'Blood Bank' || item.label === 'Crowd Funding';
                         const specialColor = item.id === 'emergency' ? 'hsl(var(--destructive))' : item.color;
 

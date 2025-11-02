@@ -48,7 +48,7 @@ const initialProviderData = Array.from({ length: 50 }, (_, i) => {
             month: 12000 + (i % 10) * 1000
         },
         location: i % 3 === 0 ? "Guntur" : "Hyderabad",
-        verified: i % 1.2 > 0.2,
+        verified: i % 2 === 0,
         contact: `+91 98765 432${(i < 10 ? '0' : '') + i}`,
     };
 });

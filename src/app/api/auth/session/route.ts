@@ -1,43 +1,62 @@
 
-import { NextResponse, type NextRequest } from 'next/server';
-import admin from '@/lib/firebase-admin';
+import { NextResponse } from 'next/server';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 
-const SEVEN_DAYS_IN_SECONDS = 7 * 24 * 60 * 60;
+// Initialize Firebase Admin SDK if not already initialized
+// This ensures the app is initialized only once.
+if (getApps().length === 0) {
+    try {
+        const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+        
+        if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
+            throw new Error('Firebase server environment variables are not set for session route.');
+        }
 
-export async function POST(request: NextRequest) {
-  try {
-    const { idToken } = await request.json();
-
-    if (!idToken) {
-      return NextResponse.json({ error: 'ID token is required.' }, { status: 400 });
+        initializeApp({
+            credential: cert({
+                projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                privateKey: privateKey,
+            })
+        });
+    } catch (error: any) {
+        console.error('Firebase Admin SDK initialization failed in session route:', error.message);
+        // We will not throw here, but the later auth calls will fail.
+        // A success response should not be possible.
     }
+}
 
-    // This part remains the same: verify the token, get the role.
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const userRole = decodedToken.role || 'patient';
+export async function POST(request: Request) {
+  const { idToken } = await request.json();
 
-    const sessionCookie = await admin.auth().createSessionCookie(idToken, { expiresIn: SEVEN_DAYS_IN_SECONDS * 1000 });
+  if (!idToken) {
+    return NextResponse.json({ error: 'ID token is required' }, { status: 400 });
+  }
 
-    // --- THE CRITICAL FIX IS HERE ---
-    // 1. Create the response object.
-    const response = NextResponse.json({ status: 'success', role: userRole });
+  try {
+    const auth = getAuth();
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const role = decodedToken.role || 'patient'; 
 
-    // 2. Set the cookie with flags that allow cross-site usage.
-    // `SameSite=None` and `Secure=true` are required for the cookie to be sent
-    // from the browser in the embedded IDE environment.
-    response.cookies.set('__session', sessionCookie, {
-      httpOnly: true,       // Prevents client-side JS from accessing the cookie
-      secure: true,           // MUST be true when SameSite=None
-      sameSite: 'none',       // Allows the cookie to be sent in cross-site requests
-      maxAge: SEVEN_DAYS_IN_SECONDS, // The cookie's lifetime
-      path: '/',               // The cookie is available for all pages
-    });
+    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+    const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
 
-    // 3. Return the response with the correctly configured cookie.
+    const options = {
+      name: 'firebase-session-token',
+      value: sessionCookie,
+      maxAge: expiresIn,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+    };
+
+    const response = NextResponse.json({ status: 'success', role }, { status: 200 });
+    response.cookies.set(options);
+
     return response;
-
-  } catch (error) {
-    console.error('Session creation error:', error);
-    return NextResponse.json({ error: 'Failed to create session.' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Error creating session cookie:', error);
+    return NextResponse.json({ error: 'Unauthorized: ' + error.message }, { status: 401 });
   }
 }

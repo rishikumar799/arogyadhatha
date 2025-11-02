@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 function getDashboardPath(role: string): string {
   const dashboards: { [key: string]: string } = {
@@ -25,6 +26,7 @@ export default function SignInPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const router = useRouter(); // Get router instance
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,9 +62,8 @@ export default function SignInPage() {
 
       toast({ title: 'Login Successful', description: 'Redirecting to your dashboard...' });
 
-      // 3. Perform a full page redirect. This is the most robust method
-      // to ensure the browser has processed the session cookie before the next page loads.
-      window.location.href = dashboardPath;
+      // 3. Use router for navigation
+      router.push(dashboardPath);
 
     } catch (error: any) {
       console.error('SIGN-IN ERROR:', error.message);
@@ -101,15 +102,15 @@ export default function SignInPage() {
               required
             />
           </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Signing In...' : 'Sign In'}
-          </Button>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Don&apos;t have an account? <Link href="/auth/signup" className="font-medium text-blue-600 hover:underline">Sign up</Link>
+            </p>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Signing In...' : 'Sign In'}
+            </Button>
+          </div>
         </form>
-        <div className="text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Don&apos;t have an account? <Link href="/auth/signup" className="font-medium text-blue-600 hover:underline">Sign up</Link>
-          </p>
-        </div>
       </div>
     </div>
   );

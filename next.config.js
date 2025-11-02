@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    appDir: true,
+  },
   images: {
     remotePatterns: [
       {
@@ -16,6 +19,17 @@ const nextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "/api/:path*",
+      },
+    ];
+  },
+  serverComponentsExternalPackages: ['@google-cloud/firestore', 'firebase-admin'],
 };
+
+// Cache-busting comment
 
 module.exports = nextConfig;
