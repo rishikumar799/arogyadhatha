@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Loader2 } from 'lucide-react';
 
+// CORRECTED: The paths now point to the /dashboard sub-route for each role,
+// based on the existing file structure you provided.
 const roleDashboardPaths: { [key: string]: string } = {
-  patient: '/patients',
-  doctor: '/doctor',
-  superadmin: '/superadmin',
-  receptionist: '/receptionist',
-  diagnostics: '/diagnostics',
+  patient: '/patients/dashboard',
+  doctor: '/doctor/dashboard',
+  superadmin: '/superadmin/dashboard',
+  receptionist: '/receptionist/dashboard',
+  diagnostics: '/diagnostics/dashboard',
 };
 
 export default function HomePage() {
@@ -29,8 +31,6 @@ export default function HomePage() {
     }
   }, [userProfile, loading, router]);
 
-  // While checking the auth status or if the user is logged in and we are about to redirect,
-  // show a loading spinner. This prevents the public page from flashing for logged-in users.
   if (loading || userProfile) {
     return (
       <div className="flex h-[calc(100vh-8rem)] w-full items-center justify-center">
@@ -39,7 +39,6 @@ export default function HomePage() {
     );
   }
 
-  // If the user is not logged in (and we are done loading), show the public homepage.
   return (
     <div className="flex min-h-[calc(100vh-8rem)] w-full items-center justify-center bg-background">
       <div className="mx-auto max-w-lg text-center space-y-6">
