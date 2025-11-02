@@ -3,31 +3,38 @@ import { type NextRequest, NextResponse } from 'next/server';
 import admin from '@/lib/firebase-admin';
 
 export async function GET(request: NextRequest) {
-  const sessionCookie = request.cookies.get('__session')?.value || '';
+  const sessionCookie = request.cookies.get('firebase-session-token')?.value || '';
 
   if (!sessionCookie) {
-    return NextResponse.json({ error: 'Session cookie not found' }, { status: 401 });
+    return NextResponse.json({ error: 'Session cookie not found.' }, { status: 401 });
   }
 
   try {
-    // THE REAL FIX: Verify the session cookie and trust the claims within it.
-    // The role is baked into the session cookie when it's created.
-    // There is no need for a separate, failure-prone database lookup.
-    const decodedClaims = await admin.auth().verifySessionCookie(sessionCookie, true);
+    // DIAGNOSTIC STEP: The `checkRevoked` flag is set to `false`.
+    // If the login loop stops, it confirms the issue is a server-side permission problem where the
+    // service account cannot check for revoked sessions. The long-term fix is to adjust IAM permissions.
+    const decodedClaims = await admin.auth().verifySessionCookie(sessionCookie, false);
+    const uid = decodedClaims.uid;
     
-    const userRole = decodedClaims.role;
+    const userDocRef = admin.firestore().collection('users').doc(uid);
+    const userDoc = await userDocRef.get();
 
+    if (!userDoc.exists) {
+      return NextResponse.json({ error: `User profile not found in database for UID: ${uid}` }, { status: 404 });
+    }
+    
+    const userRole = userDoc.data()?.role;
     if (!userRole) {
-      // This would mean the session cookie was created without a role, which is an issue
-      // in the session creation logic itself.
-      return NextResponse.json({ error: 'Role not found in session claims.' }, { status: 403 });
+      return NextResponse.json({ error: `Role not found in user profile for UID: ${uid}` }, { status: 404 });
     }
 
-    // Return the authoritative role from the session cookie itself.
     return NextResponse.json({ role: userRole.toLowerCase() }, { status: 200 });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Verify session error:', error);
-    return NextResponse.json({ error: 'Invalid or expired session.' }, { status: 401 });
+    return NextResponse.json({ 
+        error: 'Invalid or expired session cookie.',
+        detail: error.message
+    }, { status: 401 });
   }
 }

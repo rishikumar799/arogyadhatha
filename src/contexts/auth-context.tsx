@@ -1,90 +1,105 @@
 'use client';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { usePathname, useRouter } from 'next/navigation';
 
-// Define the structure of the user profile from Firestore
+// Define the structure of the user profile derived from the session
 interface UserProfile {
-  uid: string;
-  email: string;
   role: string;
-  firstName?: string;
-  lastName?: string;
-  // Add any other fields from your users collection
 }
 
 // Define the context type
 interface AuthContextType {
-  user: User | null; // The raw Firebase user object
-  userProfile: UserProfile | null; // The user profile from Firestore
+  userProfile: UserProfile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<any>;
+  error: string | null; // Add state for holding the error message
   signOut: () => Promise<void>;
 }
 
 // Create the context with a default value
 const AuthContext = createContext<AuthContextType>({
-  user: null,
   userProfile: null,
   loading: true,
-  signIn: async () => {},
+  error: null,
   signOut: async () => {},
 });
 
 // Create the AuthProvider component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null); // State to hold the error
+  const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setLoading(true);
-      if (currentUser) {
-        setUser(currentUser);
-        // Fetch the user profile from Firestore
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          setUserProfile(userDoc.data() as UserProfile);
-        } else {
-          // Handle cases where the user exists in Auth but not in Firestore
-          setUserProfile(null);
-          console.warn("User exists in Auth, but no profile found in Firestore.");
-        }
-      } else {
-        setUser(null);
-        setUserProfile(null);
+    const verifySession = async () => {
+      setError(null); // Clear previous errors on navigation
+      
+      if (pathname.startsWith('/auth')) {
+        setLoading(false);
+        return;
       }
-      setLoading(false);
-    });
 
-    return () => unsubscribe();
-  }, []);
+      try {
+        const res = await fetch('/api/auth/verify-session');
+        const data = await res.json();
 
-  const signIn = (email: string, password: string) => {
-    return signInWithEmailAndPassword(auth, email, password);
-  };
+        if (!res.ok) {
+          // If the response is not OK, throw an error with the detailed message from the server
+          throw new Error(data.error + (data.detail ? ` (Details: ${data.detail})` : ''));
+        }
+
+        setUserProfile(data as UserProfile);
+
+      } catch (err: any) {
+        console.error("Session verification failed:", err.message);
+        setError(err.message); // Set the error state so it can be displayed
+        setUserProfile(null);
+
+        // Only redirect for classic "not logged in" errors. 
+        // For server configuration errors (like 500 or 404), we want to show the error message instead of looping.
+        if (err.message.includes('Session cookie not found') || err.message.includes('Invalid or expired session cookie')) {
+            router.push('/auth/signin');
+        }
+
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    verifySession();
+  }, [pathname, router]);
 
   const signOut = async () => {
     try {
-      await firebaseSignOut(auth);
-      // The onAuthStateChanged listener will handle state updates
+      await fetch('/api/auth/signout', { method: 'POST' });
+    } catch (e) {
+      console.error("Signout API call failed", e);
+    } finally {
       window.location.href = '/auth/signin';
-    } catch (error) {
-      console.error("Sign-out failed:", error);
     }
   };
 
-  const value = { user, userProfile, loading, signIn, signOut };
+  const value = { userProfile, loading, error, signOut };
 
+  // Now, the main view logic can decide what to show based on the state
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {loading ? (
+        <div>Loading...</div> // Or a proper loading spinner
+      ) : error ? (
+        // If there's an error, display it prominently
+        <div style={{ padding: '20px', color: 'red', backgroundColor: '#fdd' }}>
+          <h1>Authentication Error</h1>
+          <p>Could not verify your session. Please contact support.</p>
+          <pre><strong>Error:</strong> {error}</pre>
+        </div>
+      ) : (
+        // Only render children if loading is complete and there is no error
+        children
+      )}
     </AuthContext.Provider>
   );
 };
 
-// Create the useAuth hook for easy consumption
 export const useAuth = () => useContext(AuthContext);

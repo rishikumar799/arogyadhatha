@@ -1,117 +1,101 @@
 'use client';
-
 import { useState } from 'react';
+import Link from "next/link"
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Import useRouter
-
-function getDashboardPath(role: string): string {
-  const dashboards: { [key: string]: string } = {
-    superadmin: '/superadmin',
-    doctor: '/doctor',
-    receptionist: '/receptionist',
-    diagnostics: '/diagnostics',
-    patient: '/patients',
-  };
-  return dashboards[role.toLowerCase()] || '/';
-}
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Loader2 } from 'lucide-react';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-  const router = useRouter(); // Get router instance
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setIsLoading(true);
 
     try {
-      // 1. Authenticate with Firebase
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      if (!user) throw new Error('Firebase user authentication failed.');
-
       const idToken = await user.getIdToken();
 
-      // 2. Call the session API to create the cookie
       const res = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data.error || 'Session API call failed. Please check server logs.');
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Session creation failed');
       }
 
-      const { role } = data;
-      if (!role) {
-        throw new Error('Role is missing from the API response.');
-      }
-      
-      const dashboardPath = getDashboardPath(role);
-
-      toast({ title: 'Login Successful', description: 'Redirecting to your dashboard...' });
-
-      // 3. Use router for navigation
-      router.push(dashboardPath);
+      const nextUrl = searchParams.get('next') || '/';
+      window.location.href = nextUrl; // Full page reload
 
     } catch (error: any) {
-      console.error('SIGN-IN ERROR:', error.message);
-      toast({ title: 'Login Failed', description: error.message, variant: 'destructive' });
+      console.error("Sign-in failed:", error);
+      setError(error.message || 'An unknown error occurred.');
+    } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Sign In</h1>
-          <p className="text-gray-500 dark:text-gray-400">Enter your email and password to access your account</p>
-        </div>
-        <form onSubmit={handleSignIn} className="space-y-6">
-          <div>
+    <Card className="mx-auto max-w-sm mt-10">
+      <CardHeader>
+        <CardTitle className="text-2xl">Sign In</CardTitle>
+        <CardDescription>
+          Enter your email below to login to your account
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSignIn} className="grid gap-4">
+          <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
+              placeholder="m@example.com"
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="user@example.com"
-              required
             />
           </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
+          <div className="grid gap-2">
+            <div className="flex items-center">
+              <Label htmlFor="password">Password</Label>
+            </div>
+            <Input 
+              id="password" 
+              type="password" 
+              required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
             />
           </div>
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Don&apos;t have an account? <Link href="/auth/signup" className="font-medium text-blue-600 hover:underline">Sign up</Link>
-            </p>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Signing In...' : 'Sign In'}
-            </Button>
-          </div>
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Sign In
+          </Button>
         </form>
-      </div>
-    </div>
+        <div className="mt-4 text-center text-sm">
+          Don&apos;t have an account?{" "}
+          <Link href="/auth/signup" className="underline">
+            Sign up
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

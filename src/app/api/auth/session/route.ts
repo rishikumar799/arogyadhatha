@@ -1,31 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-
-// Initialize Firebase Admin SDK if not already initialized
-// This ensures the app is initialized only once.
-if (getApps().length === 0) {
-    try {
-        const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-        
-        if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
-            throw new Error('Firebase server environment variables are not set for session route.');
-        }
-
-        initializeApp({
-            credential: cert({
-                projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: privateKey,
-            })
-        });
-    } catch (error: any) {
-        console.error('Firebase Admin SDK initialization failed in session route:', error.message);
-        // We will not throw here, but the later auth calls will fail.
-        // A success response should not be possible.
-    }
-}
+import admin from '@/lib/firebase-admin'; // USE the centralized admin instance
 
 export async function POST(request: Request) {
   const { idToken } = await request.json();
@@ -35,15 +10,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const auth = getAuth();
+    const auth = admin.auth();
     const decodedToken = await auth.verifyIdToken(idToken);
     const role = decodedToken.role || 'patient'; 
 
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
 
+    // CORRECTED: Ensure the name is consistent
     const options = {
-      name: 'firebase-session-token',
+      name: 'firebase-session-token', 
       value: sessionCookie,
       maxAge: expiresIn,
       httpOnly: true,
