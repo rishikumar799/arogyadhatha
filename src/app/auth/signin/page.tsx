@@ -39,8 +39,11 @@ export default function SignInPage() {
         throw new Error(errorData.error || 'Session creation failed');
       }
 
+      // *** THE FIX ***
+      // A hard redirect is necessary to ensure the new session cookie is sent
+      // to the server and the middleware can properly authenticate the user.
       const nextUrl = searchParams.get('next') || '/';
-      window.location.href = nextUrl; // Full page reload
+      window.location.assign(nextUrl);
 
     } catch (error: any) {
       console.error("Sign-in failed:", error);
