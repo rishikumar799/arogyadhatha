@@ -10,22 +10,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // DIAGNOSTIC STEP: The `checkRevoked` flag is set to `false`.
-    // If the login loop stops, it confirms the issue is a server-side permission problem where the
-    // service account cannot check for revoked sessions. The long-term fix is to adjust IAM permissions.
-    const decodedClaims = await admin.auth().verifySessionCookie(sessionCookie, false);
-    const uid = decodedClaims.uid;
-    
-    const userDocRef = admin.firestore().collection('users').doc(uid);
-    const userDoc = await userDocRef.get();
+    // The `checkRevoked` flag is set to `true` to ensure that revoked sessions are not authenticated.
+    // This requires the service account to have the "Firebase Auth Admin" IAM role.
+    const decodedClaims = await admin.auth().verifySessionCookie(sessionCookie, true);
+    const userRole = decodedClaims.role;
 
-    if (!userDoc.exists) {
-      return NextResponse.json({ error: `User profile not found in database for UID: ${uid}` }, { status: 404 });
-    }
-    
-    const userRole = userDoc.data()?.role;
     if (!userRole) {
-      return NextResponse.json({ error: `Role not found in user profile for UID: ${uid}` }, { status: 404 });
+      return NextResponse.json({ error: 'Role not found in session claims.' }, { status: 403 });
     }
 
     return NextResponse.json({ role: userRole.toLowerCase() }, { status: 200 });

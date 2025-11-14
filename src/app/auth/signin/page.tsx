@@ -1,68 +1,90 @@
-'use client';
-import { useState } from 'react';
-import Link from "next/link"
-import { useRouter, useSearchParams } from 'next/navigation';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Loader2 } from 'lucide-react';
 
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from "firebase/auth";
+import { app } from "@/lib/firebase"; // Make sure firebase is initialized
+import { Loader2 } from "lucide-react";
+
+// Main component for the Sign In page
 export default function SignInPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const auth = getAuth(app);
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  // Handles the form submission for email/password sign-in
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null);
     setIsLoading(true);
+    setError(null);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      const idToken = await user.getIdToken();
+      // 1. Authenticate with Firebase client-side
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const idToken = await userCredential.user.getIdToken();
 
-      const res = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      // 2. Send the ID token to the backend to create a session cookie
+      const response = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken }),
       });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Session creation failed');
+      // 3. Handle the response
+      if (response.ok) {
+        // A full page reload is necessary to clear all state and
+        // allow the new middleware to correctly process the new session cookie
+        // and redirect the user to their dashboard.
+        window.location.assign("/"); // Redirect to home, middleware will handle the rest
+      } else {
+        // **THIS IS THE FINAL FIX**
+        // The backend now sends a specific error if the user has no role.
+        // We must display that error to the user.
+        const data = await response.json();
+        throw new Error(data.error || "An unknown error occurred.");
       }
-
-      // *** THE FIX ***
-      // A hard redirect is necessary to ensure the new session cookie is sent
-      // to the server and the middleware can properly authenticate the user.
-      const nextUrl = searchParams.get('next') || '/';
-      window.location.assign(nextUrl);
-
     } catch (error: any) {
       console.error("Sign-in failed:", error);
-      setError(error.message || 'An unknown error occurred.');
-    } finally {
+
+      // Display the specific error message from the backend or a generic one
+      setError(error.message || "An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
   };
 
   return (
-    <Card className="mx-auto max-w-sm mt-10">
-      <CardHeader>
+    <Card className="mx-auto max-w-sm">      <CardHeader>
         <CardTitle className="text-2xl">Sign In</CardTitle>
         <CardDescription>
           Enter your email below to login to your account
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSignIn} className="grid gap-4">
+        <form onSubmit={handleSubmit} className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -78,9 +100,9 @@ export default function SignInPage() {
             <div className="flex items-center">
               <Label htmlFor="password">Password</Label>
             </div>
-            <Input 
-              id="password" 
-              type="password" 
+            <Input
+              id="password"
+              type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}

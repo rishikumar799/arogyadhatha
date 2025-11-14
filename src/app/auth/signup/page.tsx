@@ -1,8 +1,6 @@
-
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
@@ -27,7 +25,6 @@ export default function SignUpPage() {
   const [bloodGroup, setBloodGroup] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const router = useRouter();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -46,51 +43,70 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
+      // 1. Create the user on the client
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const uid = userCredential.user.uid;
+      const user = userCredential.user;
+      const uid = user.uid;
 
       const userData = {
         uid,
         firstName,
         lastName,
         email,
-        role: role.toLowerCase(), // Ensure role is lowercase
+        role: role.toLowerCase(),
         hospital: role === 'Patient' ? '' : hospital,
         bloodGroup: bloodGroup || '',
         createdAt: new Date(),
+        status: role === 'Patient' ? 'Approved' : 'Pending',
       };
 
+      // 2. Save user data and handle role-specific logic
       if (role === 'Patient') {
-        // Direct entry into users collection and set custom claim
+        // For patients, create the user, set the role, and log them in immediately.
         await setDoc(doc(db, 'users', uid), userData);
-        await fetch('/api/auth/set-role', {
+
+        // 2a. Set the custom claim
+        const setRoleResponse = await fetch('/api/auth/set-role', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid, role: 'patient' }),
         });
-        toast({ title: 'Registration Successful', description: 'You can now login.' });
-        router.push('/auth/signin');
+
+        if (!setRoleResponse.ok) {
+          throw new Error('Failed to set user role.');
+        }
+
+        // 2b. Force-refresh the token to get the new custom claim
+        const idToken = await user.getIdToken(true);
+
+        // 2c. Create the session cookie
+        const sessionResponse = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        });
+
+        if (!sessionResponse.ok) {
+          throw new Error('Failed to create session after signup.');
+        }
+
+        toast({ title: 'Registration Successful', description: 'Welcome! Redirecting you to your dashboard...' });
+        
+        // 2d. Redirect. The middleware will handle routing to the correct dashboard.
+        window.location.assign('/');
+
       } else {
-        // Send request for approval
-        await setDoc(doc(db, 'requests', uid), { ...userData, status: 'Pending' });
+        // For other roles, submit them for approval and redirect to the sign-in page.
+        await setDoc(doc(db, 'requests', uid), userData);
         toast({
           title: 'Request Submitted',
-          description: 'Your registration is pending approval by Super Admin.',
+          description: 'Your registration is pending approval. You will be notified via email.',
         });
-        router.push('/auth/signin');
+        window.location.assign('/auth/signin');
       }
 
-      // Clear form
-      setEmail('');
-      setPassword('');
-      setFirstName('');
-      setLastName('');
-      setRole('');
-      setHospital('');
-      setBloodGroup('');
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Signup Failed', description: error.message || 'Error occurred.' });
-    } finally {
+      toast({ variant: 'destructive', title: 'Signup Failed', description: error.message || 'An unknown error occurred.' });
       setIsLoading(false);
     }
   };
@@ -104,7 +120,7 @@ export default function SignUpPage() {
 
       <CardContent>
         <form onSubmit={handleSubmit} className="grid gap-4">
-          {/* First/Last name */}
+          {/* Form fields remain the same */}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="firstName">First Name</Label>
@@ -116,13 +132,10 @@ export default function SignUpPage() {
             </div>
           </div>
 
-          {/* Role */}
           <div className="grid gap-2">
             <Label htmlFor="role">Role</Label>
             <Select onValueChange={(value) => setRole(value as Role)} value={role}>
-              <SelectTrigger id="role">
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
+              <SelectTrigger id="role"><SelectValue placeholder="Select role" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Patient">Patient</SelectItem>
                 <SelectItem value="Doctor">Doctor</SelectItem>
@@ -132,41 +145,23 @@ export default function SignUpPage() {
             </Select>
           </div>
 
-          {/* Hospital for non-patients */}
           {role !== 'Patient' && role !== '' && (
             <div className="grid gap-2">
               <Label htmlFor="hospital">Hospital Name</Label>
-              <Input
-                id="hospital"
-                placeholder="Enter hospital name"
-                required
-                value={hospital}
-                onChange={(e) => setHospital(e.target.value)}
-              />
+              <Input id="hospital" placeholder="Enter hospital name" required value={hospital} onChange={(e) => setHospital(e.target.value)} />
             </div>
           )}
 
-          {/* Blood group (optional) */}
           <div className="grid gap-2">
             <Label htmlFor="bloodGroup">Blood Group (Optional)</Label>
             <Select onValueChange={(value) => setBloodGroup(value)} value={bloodGroup}>
-              <SelectTrigger id="bloodGroup">
-                <SelectValue placeholder="Select Blood Group" />
-              </SelectTrigger>
+              <SelectTrigger id="bloodGroup"><SelectValue placeholder="Select Blood Group" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="A+">A+</SelectItem>
-                <SelectItem value="A-">A-</SelectItem>
-                <SelectItem value="B+">B+</SelectItem>
-                <SelectItem value="B-">B-</SelectItem>
-                <SelectItem value="O+">O+</SelectItem>
-                <SelectItem value="O-">O-</SelectItem>
-                <SelectItem value="AB+">AB+</SelectItem>
-                <SelectItem value="AB-">AB-</SelectItem>
+                <SelectItem value="A+">A+</SelectItem><SelectItem value="A-">A-</SelectItem><SelectItem value="B+">B+</SelectItem><SelectItem value="B-">B-</SelectItem><SelectItem value="O+">O+</SelectItem><SelectItem value="O-">O-</SelectItem><SelectItem value="AB+">AB+</SelectItem><SelectItem value="AB-">AB-</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Email / Password */}
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
