@@ -1,184 +1,161 @@
-'use client';
 
-import { useState } from 'react';
-import { auth, db } from '@/lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
+"use client";
 
-type Role = 'Patient' | 'Doctor' | 'Receptionist' | 'Diagnostics';
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { app } from "@/lib/firebase"; // Make sure firebase is initialized
+import { Loader2 } from "lucide-react";
 
 export default function SignUpPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState<Role | '' >('');
-  const [hospital, setHospital] = useState('');
-  const [bloodGroup, setBloodGroup] = useState('');
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  const { toast } = useToast();
+  const router = useRouter();
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    if (!role) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Please select a role.' });
-      return;
-    }
-
-    if (role !== 'Patient' && !hospital) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Please enter hospital name.' });
-      return;
-    }
-
     setIsLoading(true);
+    setError(null);
 
     try {
-      // 1. Create the user on the client
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      const uid = user.uid;
-
-      const userData = {
-        uid,
-        firstName,
-        lastName,
+      // 1. Create user in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
         email,
-        role: role.toLowerCase(),
-        hospital: role === 'Patient' ? '' : hospital,
-        bloodGroup: bloodGroup || '',
+        password
+      );
+      const user = userCredential.user;
+
+      // 2. Update the user's profile in Firebase Authentication
+      await updateProfile(user, {
+        displayName: `${firstName} ${lastName}`,
+      });
+
+      // 3. Create a user document in Firestore with a default role
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        email: user.email,
+        displayName: `${firstName} ${lastName}`,
+        role: "patient", // Assign a default role
         createdAt: new Date(),
-        status: role === 'Patient' ? 'Approved' : 'Pending',
-      };
+      });
 
-      // 2. Save user data and handle role-specific logic
-      if (role === 'Patient') {
-        // For patients, create the user, set the role, and log them in immediately.
-        await setDoc(doc(db, 'users', uid), userData);
-
-        // 2a. Set the custom claim
-        const setRoleResponse = await fetch('/api/auth/set-role', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uid, role: 'patient' }),
-        });
-
-        if (!setRoleResponse.ok) {
-          throw new Error('Failed to set user role.');
-        }
-
-        // 2b. Force-refresh the token to get the new custom claim
-        const idToken = await user.getIdToken(true);
-
-        // 2c. Create the session cookie
-        const sessionResponse = await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken }),
-        });
-
-        if (!sessionResponse.ok) {
-          throw new Error('Failed to create session after signup.');
-        }
-
-        toast({ title: 'Registration Successful', description: 'Welcome! Redirecting you to your dashboard...' });
-        
-        // 2d. Redirect. The middleware will handle routing to the correct dashboard.
-        window.location.assign('/');
-
-      } else {
-        // For other roles, submit them for approval and redirect to the sign-in page.
-        await setDoc(doc(db, 'requests', uid), userData);
-        toast({
-          title: 'Request Submitted',
-          description: 'Your registration is pending approval. You will be notified via email.',
-        });
-        window.location.assign('/auth/signin');
-      }
+      // --- THIS IS THE FIX ---
+      // After successful sign-up, redirect the user to the sign-in page
+      // so they can log in and be routed to their new dashboard.
+      router.push("/auth/signin");
 
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Signup Failed', description: error.message || 'An unknown error occurred.' });
+      console.error("Sign-up failed:", error);
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      if (error.code) {
+        switch (error.code) {
+          case "auth/email-already-in-use":
+            errorMessage =
+              "This email is already in use. Please sign in or use a different email.";
+            break;
+          case "auth/invalid-email":
+            errorMessage = "The email address is not valid.";
+            break;
+          case "auth/weak-password":
+            errorMessage = "The password is too weak. Please choose a stronger password.";
+            break;
+          default:
+            errorMessage = error.message;
+        }
+      }
+      setError(errorMessage);
+    } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Card className="mx-auto max-w-md">
+    <Card className="mx-auto max-w-sm">
       <CardHeader>
         <CardTitle className="text-xl">Sign Up</CardTitle>
-        <CardDescription>Enter your details to create an account</CardDescription>
+        <CardDescription>
+          Enter your information to create an account
+        </CardDescription>
       </CardHeader>
-
       <CardContent>
         <form onSubmit={handleSubmit} className="grid gap-4">
-          {/* Form fields remain the same */}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="firstName">First Name</Label>
-              <Input id="firstName" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              <Label htmlFor="first-name">First name</Label>
+              <Input
+                id="first-name"
+                placeholder="Max"
+                required
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="lastName">Last Name</Label>
-              <Input id="lastName" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              <Label htmlFor="last-name">Last name</Label>
+              <Input
+                id="last-name"
+                placeholder="Robinson"
+                required
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
             </div>
           </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="role">Role</Label>
-            <Select onValueChange={(value) => setRole(value as Role)} value={role}>
-              <SelectTrigger id="role"><SelectValue placeholder="Select role" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Patient">Patient</SelectItem>
-                <SelectItem value="Doctor">Doctor</SelectItem>
-                <SelectItem value="Receptionist">Receptionist</SelectItem>
-                <SelectItem value="Diagnostics">Diagnostics</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {role !== 'Patient' && role !== '' && (
-            <div className="grid gap-2">
-              <Label htmlFor="hospital">Hospital Name</Label>
-              <Input id="hospital" placeholder="Enter hospital name" required value={hospital} onChange={(e) => setHospital(e.target.value)} />
-            </div>
-          )}
-
-          <div className="grid gap-2">
-            <Label htmlFor="bloodGroup">Blood Group (Optional)</Label>
-            <Select onValueChange={(value) => setBloodGroup(value)} value={bloodGroup}>
-              <SelectTrigger id="bloodGroup"><SelectValue placeholder="Select Blood Group" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="A+">A+</SelectItem><SelectItem value="A-">A-</SelectItem><SelectItem value="B+">B+</SelectItem><SelectItem value="B-">B-</SelectItem><SelectItem value="O+">O+</SelectItem><SelectItem value="O-">O-</SelectItem><SelectItem value="AB+">AB+</SelectItem><SelectItem value="AB-">AB-</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input
+              id="email"
+              type="email"
+              placeholder="m@example.com"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
-
+          {error && <p className="text-sm text-red-500">{error}</p>}
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Account
+            Create an account
           </Button>
         </form>
-
         <div className="mt-4 text-center text-sm">
-          Already have an account? <Link href="/auth/signin" className="underline">Sign in</Link>
+          Already have an account?{" "}
+          <Link href="/auth/signin" className="underline">
+            Sign in
+          </Link>
         </div>
       </CardContent>
     </Card>
