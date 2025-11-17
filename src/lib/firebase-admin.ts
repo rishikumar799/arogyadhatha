@@ -1,3 +1,5 @@
+
+import 'server-only';
 import admin from 'firebase-admin';
 
 // Check if the app is already initialized to prevent errors
