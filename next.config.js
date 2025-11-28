@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
   images: {
     remotePatterns: [
       {
@@ -27,7 +24,7 @@ const nextConfig = {
       },
     ];
   },
-  serverComponentsExternalPackages: ['@google-cloud/firestore', 'firebase-admin'],
+  serverExternalPackages: ['@google-cloud/firestore', 'firebase-admin'],
 };
 
 // Cache-busting comment
