@@ -1,9 +1,10 @@
 
-import type { Metadata } from 'next';
+import type {Metadata} from 'next';
 import './globals.css';
 import { Poppins } from 'next/font/google';
-import { Providers } from '@/components/providers';
-import { AuthProvider } from '@/contexts/auth-context'; // Import the AuthProvider
+import { ThemeProvider } from '@/components/theme-provider';
+import { LanguageProvider } from '@/context/language-context';
+import { LocationProvider } from '@/context/location-context';
 
 const poppins = Poppins({ 
   subsets: ['latin'], 
@@ -25,10 +26,18 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${poppins.variable} font-sans antialiased`}>
-        {/* Wrap the entire application with AuthProvider */}
-        <AuthProvider>
-          <Providers>{children}</Providers>
-        </AuthProvider>
+        <LanguageProvider>
+          <LocationProvider>
+            <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+            >
+                {children}
+            </ThemeProvider>
+          </LocationProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

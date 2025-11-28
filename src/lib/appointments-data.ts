@@ -2,6 +2,7 @@
 export const previousAppointments = [
     {
         problem: "Typhoid Fever",
+        technicalName: "Enteric Fever",
         specialty: "General Physician",
         date: "2024-08-01",
         initialDoctor: "Dr. Anjali",
@@ -64,6 +65,7 @@ export const previousAppointments = [
     },
     {
         problem: "Liver Cirrhosis",
+        technicalName: "Hepatic Cirrhosis",
         specialty: "Gastroenterologist",
         date: "2021-09-15",
         initialDoctor: "Dr. R.K. Reddy",
@@ -145,6 +147,7 @@ export const previousAppointments = [
     },
     {
         problem: "Post-viral fatigue & chest pain",
+        technicalName: "Myocarditis",
         specialty: "Cardiologist",
         date: "2024-08-05",
         initialDoctor: "Ashok kumar chintha",
@@ -194,6 +197,7 @@ export const previousAppointments = [
     },
     {
         problem: "Seasonal Flu",
+        technicalName: "Influenza",
         specialty: "General Physician",
         date: "2024-07-15",
         initialDoctor: "Dr. Anjali",
@@ -224,6 +228,7 @@ export const previousAppointments = [
     },
      {
         problem: "Knee Pain",
+        technicalName: "Arthralgia",
         specialty: "Orthopedic Surgeon",
         date: "2024-06-10",
         initialDoctor: "Dr. Lakshmi Narasaiah",
@@ -278,5 +283,5 @@ export const getAllVisits = () => {
   return allVisits;
 };
 
-    
+
     

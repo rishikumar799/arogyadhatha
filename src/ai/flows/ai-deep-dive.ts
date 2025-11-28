@@ -11,10 +11,10 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { previousAppointments } from '@/lib/appointments-data';
 
 const DeepDiveInputSchema = z.object({
   diseaseName: z.string().describe('The name of the main disease or health condition.'),
-  topic: z.string().describe('The specific sub-topic to get detailed information about (e.g., "deep diet", "treatment options").'),
   language: z.string().describe("The language for the response (e.g., 'en' for English, 'te' for Telugu)."),
 });
 type DeepDiveInput = z.infer<typeof DeepDiveInputSchema>;
@@ -33,12 +33,17 @@ const prompt = ai.definePrompt({
   prompt: `You are a highly specialized medical AI expert. Your task is to provide a detailed, in-depth explanation about a specific aspect of a health condition.
   The response must be in the specified language: {{language}}.
 
-  The user is asking for a deep dive on the topic: "{{topic}}" for the disease: "{{diseaseName}}".
+  The user is asking for a deep dive on the topic: "summary of follow-ups" for the disease: "{{diseaseName}}".
 
-  Provide a comprehensive, well-structured, and easy-to-understand explanation. Use paragraphs to structure the response.
+  Based on the provided JSON data of the patient's full appointment history, find the entry for "{{diseaseName}}" and generate a chronological summary of all its follow-up visits.
 
-  For example, if the topic is "deep diet", you should provide a very detailed diet plan, explaining the scientific reasons behind food choices, listing micronutrients, and giving sample meal plans.
-  If the topic is "deep testing", you should explain not just the names of the tests, but what they measure, how they are performed, and what the results indicate in detail.
+  For each follow-up, present it with a serial number (e.g., "1. First Follow-up").
+  In 2-5 lines, summarize the key events: the doctor's summary, the main medicines prescribed, and explicitly mention any "Abnormal" lab test results.
+
+  This summary should be easy for both a patient and a doctor to quickly understand the entire treatment journey.
+
+  PATIENT'S APPOINTMENT HISTORY:
+  {{{json previousAppointments}}}
 
   IMPORTANT: This information is for educational purposes. Conclude your response with a clear disclaimer that this is not medical advice and the user must consult a qualified healthcare professional.
   `,
@@ -51,7 +56,11 @@ const deepDiveFlow = ai.defineFlow(
     outputSchema: DeepDiveOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
+    const { output } = await prompt({
+      ...input,
+      // @ts-ignore
+      previousAppointments,
+    });
     return output!;
   }
 );

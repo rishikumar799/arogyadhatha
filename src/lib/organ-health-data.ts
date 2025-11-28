@@ -17,7 +17,7 @@ export const organHealthData = [
       ],
       image: "https://picsum.photos/seed/heart/100/100",
       dataAiHint: "heart organ",
-      color: "hsl(var(--primary))",
+      color: "#f59e0b", // Amber 500 for Monitoring
     },
     {
       name: "Liver",
@@ -34,7 +34,7 @@ export const organHealthData = [
       ],
       image: "https://picsum.photos/seed/liver/100/100",
       dataAiHint: "liver organ",
-      color: "hsl(var(--primary))",
+      color: "#ef4444", // Red 500 for Critical
     },
     {
       name: "Kidneys",
@@ -49,7 +49,7 @@ export const organHealthData = [
       ],
       image: "https://picsum.photos/seed/kidneys/100/100",
       dataAiHint: "kidneys organ",
-      color: "hsl(var(--primary))",
+      color: "#22c55e", // Green 500 for Good/Excellent
     },
     {
       name: "Lungs",
@@ -63,7 +63,7 @@ export const organHealthData = [
       ],
       image: "https://picsum.photos/seed/lungs/100/100",
       dataAiHint: "lungs organ",
-      color: "hsl(var(--primary))",
+      color: "#22c55e",
     },
     {
       name: "Brain",
@@ -77,7 +77,7 @@ export const organHealthData = [
       ],
       image: "https://picsum.photos/seed/brain/100/100",
       dataAiHint: "brain organ",
-      color: "hsl(var(--primary))",
+      color: "#22c55e",
     },
     {
         name: "Stomach (Gut)",
@@ -92,6 +92,8 @@ export const organHealthData = [
         ],
         image: "https://picsum.photos/seed/stomach/100/100",
         dataAiHint: "stomach organ",
-        color: "hsl(var(--primary))",
+        color: "#22c55e",
     }
 ];
+
+    

@@ -46,7 +46,7 @@ const prompt = ai.definePrompt({
   **Crucially, you must analyze all user data to create a holistic and personalized plan:**
   1.  **Analyze Physical Attributes:** Use the user's height and weight to tailor portion sizes and caloric intake appropriately.
   2.  **Consider Medical Status:** Take into account the specified organ, the user's health condition, and their active medications to ensure the diet is complementary and does not cause adverse interactions.
-  3.  **Incorporate Healthy Nutrients:** Ensure the diet includes good sources of lean **protein**, healthy fats like **omega-3** (from fish, flaxseeds) and monosaturated fats (from **olive oil**, nuts), and complex carbohydrates.
+  3.  **Incorporate Healthy Nutrients:** Ensure the diet includes good sources of lean **protein**, healthy fats like **omega-3** (from fish, flaxseeds) and monosaturated fats (from **olive oil**, nuts), and complex carbohydrates, all in line with ICMR recommendations for the given condition.
 
   **User Data:**
   - Height: {{{height}}}

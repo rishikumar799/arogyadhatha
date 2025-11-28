@@ -1,3 +1,4 @@
+
 import * as React from "react";
 
 export function PregnantLadyIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -14,8 +15,10 @@ export function PregnantLadyIcon(props: React.SVGProps<SVGSVGElement>) {
       strokeLinejoin="round"
       {...props}
     >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M16 12a4 4 0 0 1-8 0" />
+      <circle cx="12" cy="6" r="2" />
+      <path d="M12 8v4" />
+      <path d="M12 12c-2.67 0-5.33 1.33-5.33 4H17.33C17.33 13.33 14.67 12 12 12z" />
+      <path d="M12 16a6 6 0 0 0 6 6H6a6 6 0 0 0 6-6z" />
     </svg>
   );
 }

@@ -1,29 +1,21 @@
-'use client';
-import React from 'react';
-import { useAuth } from '@/contexts/auth-context';
-import { Loader2 } from 'lucide-react';
+import SuperAdminHeader from '@/app/superadmin/components/layout/superadmin-header';
+import SuperAdminSidebar from '@/app/superadmin/components/layout/superadmin-sidebar';
+import { SettingsProvider } from '@/context/settings-context';
+import { Toaster } from 'react-hot-toast';
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
-  const { userProfile, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="flex h-[calc(100vh-8rem)] w-full items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (userProfile?.role !== 'superadmin') {
-    return (
-      <div className="flex h-[calc(100vh-8rem)] w-full items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Access Denied</h1>
-          <p className="text-muted-foreground">You do not have permission to view this section.</p>
+  return (
+    <SettingsProvider>
+      <div className="flex h-screen bg-background text-foreground">
+        <SuperAdminSidebar />
+        <div className="flex-1 flex flex-col overflow-hidden md:ml-64">
+          <SuperAdminHeader />
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-8">
+            {children}
+          </main>
         </div>
+        <Toaster position="bottom-right" />
       </div>
-    );
-  }
-
-  return <div className="space-y-6">{children}</div>;
+    </SettingsProvider>
+  );
 }

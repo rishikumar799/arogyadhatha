@@ -3,23 +3,28 @@
 
 import * as React from "react";
 import { useLocation } from "@/context/location-context";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, LocateFixed, MapPin, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { locations } from "@/lib/locations-data";
 import { Input } from "../ui/input";
 import { ScrollArea } from "../ui/scroll-area";
-import { cn } from "@/lib/utils";
 
 export function LocationSelector({ inHeader }: { inHeader?: boolean }) {
-    const { location, setLocation } = useLocation();
+    const { location, setLocation, fetchLocation } = useLocation();
     const [isOpen, setIsOpen] = React.useState(false);
 
     const [selectedState, setSelectedState] = React.useState<string | null>(location.state);
     const [selectedDistrict, setSelectedDistrict] = React.useState<string | null>(location.district);
     const [selectedMandal, setSelectedMandal] = React.useState<string | null>(location.mandal);
     const [villageSearch, setVillageSearch] = React.useState('');
+
+    React.useEffect(() => {
+        if (!location.state) {
+            fetchLocation();
+        }
+    }, [fetchLocation, location.state]);
 
     const districts = React.useMemo(() => {
         if (!selectedState) return [];
@@ -41,6 +46,7 @@ export function LocationSelector({ inHeader }: { inHeader?: boolean }) {
 
     const handleSetLocation = (village: string) => {
         setLocation({
+            ...location,
             state: selectedState,
             district: selectedDistrict,
             mandal: selectedMandal,
@@ -49,12 +55,16 @@ export function LocationSelector({ inHeader }: { inHeader?: boolean }) {
         setIsOpen(false);
     };
     
+    const handleFetchLocation = () => {
+        fetchLocation();
+        setIsOpen(false);
+    };
+
     React.useEffect(() => {
         if (isOpen) {
             setSelectedState(location.state);
             setSelectedDistrict(location.district);
             setVillageSearch('');
-            // Only reset mandal if district changes or is not set
             if(location.district !== selectedDistrict) {
               setSelectedMandal(null);
             } else {
@@ -64,7 +74,7 @@ export function LocationSelector({ inHeader }: { inHeader?: boolean }) {
     }, [isOpen, location]);
 
     const displayLocation = [location.village, location.mandal, location.district].filter(Boolean).join(', ');
-    const shortDisplayLocation = location.village || location.mandal || location.district || null;
+    const shortDisplayLocation = location.village || location.mandal || location.district || 'Select Location';
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -72,22 +82,25 @@ export function LocationSelector({ inHeader }: { inHeader?: boolean }) {
                 {inHeader ? (
                     <button className="flex items-center gap-1 text-xs text-primary-foreground/80">
                         <MapPin className="h-3 w-3"/>
-                        <span className="truncate max-w-[150px]">{shortDisplayLocation || 'Select Location'}</span>
+                        <span className="truncate max-w-[150px]">{shortDisplayLocation}</span>
                         <ChevronRight className="h-3 w-3"/>
                     </button>
                 ) : (
                      <div className="flex items-center gap-2 cursor-pointer text-muted-foreground w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
                         <MapPin className="h-4 w-4" />
-                        <span className="truncate flex-1 text-left">{shortDisplayLocation || 'Select Location'}</span>
+                        <span className="truncate flex-1 text-left">{shortDisplayLocation}</span>
                     </div>
                 )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Select Your Location</DialogTitle>
+                    <DialogDescription>
+                        Choose your location to get personalized information and services.
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                     <Button variant="outline" className="w-full justify-start gap-2">
+                     <Button variant="outline" className="w-full justify-start gap-2" onClick={handleFetchLocation}>
                         <LocateFixed className="h-4 w-4 text-primary" /> Use my current location
                     </Button>
                     <div className="space-y-2">

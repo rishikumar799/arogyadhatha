@@ -21,8 +21,8 @@
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 222 84% 10%;
-    --input: 220 13% 75%;
+    --border: 0 0% 0%;
+    --input: 220 13% 91%;
     --ring: 145 60% 30%;
     --radius: 0.75rem;
     --chart-1: 12 76% 61%;
@@ -33,16 +33,16 @@
 
     --nav-home: 145 60% 30%;
     --nav-symptoms: 145 60% 30%;
-    --nav-chat: 225 73% 57%;
+    --nav-chat: 145 60% 30%;
     --nav-appointments: 145 60% 30%;
-    --nav-junior-doctors: 342 91% 54%;
+    --nav-junior-doctors: 145 60% 30%;
     --nav-diagnostics: 145 60% 30%;
-    --nav-medicines: 197 90% 41%;
+    --nav-medicines: 145 60% 30%;
     --nav-blood-bank: 0 84.2% 60.2%;
-    --nav-profile: 217 91% 60%;
+    --nav-profile: 145 60% 30%;
     --nav-emergency: 0 84.2% 60.2%;
-    --nav-notifications: 24 9.8% 10%;
-    --nav-old-age: 30 90% 55%;
+    --nav-notifications: 145 60% 30%;
+    --nav-old-age: 145 60% 30%;
   }
 
   .dark {
@@ -62,8 +62,8 @@
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 210 40% 88%;
-    --input: 217.2 32.6% 30.5%;
+    --border: 0 0% 0%;
+    --input: 217.2 32.6% 27.5%;
     --ring: 145 60% 35%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -73,16 +73,16 @@
 
     --nav-home: 145 60% 35%;
     --nav-symptoms: 145 60% 35%;
-    --nav-chat: 225 73% 67%;
+    --nav-chat: 145 60% 35%;
     --nav-appointments: 145 60% 35%;
-    --nav-junior-doctors: 342 91% 64%;
+    --nav-junior-doctors: 145 60% 35%;
     --nav-diagnostics: 145 60% 35%;
-    --nav-medicines: 197 90% 51%;
+    --nav-medicines: 145 60% 35%;
     --nav-blood-bank: 0 72% 51%;
-    --nav-profile: 217 91% 70%;
+    --nav-profile: 145 60% 35%;
     --nav-emergency: 0 62.8% 40.6%;
-    --nav-notifications: 24 9.8% 20%;
-    --nav-old-age: 30 90% 65%;
+    --nav-notifications: 145 60% 35%;
+    --nav-old-age: 145 60% 35%;
   }
 }
 
@@ -93,10 +93,7 @@
   body {
     @apply bg-background text-foreground;
   }
-}
-
-@layer components {
-  .border {
+  .card {
     @apply border-2;
   }
 }
@@ -196,8 +193,8 @@
     .flower:nth-child(9)::after { background-color: #a5d6a7; }
 
     .flower:nth-child(10) { left: 5%; animation-delay: 5.5s; background-color: #90caf9; }
-    .flower:nth-child(10)::before { background-color: #90caf9; }
-    .flower:nth-child(10)::after { background-color: #90caf9; }
+    .flower:nth-child(10):before { background-color: #90caf9; }
+    .flower:nth-child(10):after { background-color: #90caf9; }
 
 
     @keyframes flower-fall {
@@ -211,5 +208,3 @@
         }
     }
 }
-
-    

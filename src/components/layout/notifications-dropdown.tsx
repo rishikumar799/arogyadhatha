@@ -55,7 +55,7 @@ export function NotificationsDropdown() {
             <span className='sr-only'>{t.alerts}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80" align="end">
+      <DropdownMenuContent className="w-80 border" align="end">
         <DropdownMenuLabel className="flex justify-between items-center">
             <span className='font-bold text-base'>{t.notifications}</span>
             <Button variant="ghost" size="sm" className='h-auto px-2 py-1 text-xs'>{t.markAllAsRead}</Button>
@@ -69,11 +69,11 @@ export function NotificationsDropdown() {
                 return (
                     <Link href={notification.href} key={notification.id} passHref>
                         <DropdownMenuItem className="flex items-start gap-3 p-3 cursor-pointer">
-                            <div className={`mt-1 p-1.5 rounded-full ${notification.read ? 'bg-muted' : 'bg-primary/10'}`}>
-                                <notification.icon className={`h-5 w-5 ${notification.read ? 'text-muted-foreground' : 'text-primary'}`} />
+                            <div className={cn('mt-1 p-1.5 rounded-full', notification.read ? 'bg-muted' : 'bg-primary/10')}>
+                                <notification.icon className={cn('h-5 w-5', notification.read ? 'text-muted-foreground' : 'text-primary')} />
                             </div>
                             <div className='flex-1'>
-                                <p className={`font-semibold ${notification.read ? 'text-muted-foreground' : ''}`}>{title}</p>
+                                <p className={cn('font-semibold', notification.read ? 'text-muted-foreground' : '')}>{title}</p>
                                 <p className="text-sm text-muted-foreground">{description}</p>
                                 <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
                                     <Clock className="h-3 w-3" />

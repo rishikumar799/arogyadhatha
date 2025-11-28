@@ -1,0 +1,24 @@
+{
+  "hosting": {
+    "public": "public",
+    "headers": [
+      {
+        "source": "/**",
+        "headers": [
+          {
+            "key": "Permissions-Policy",
+            "value": "geolocation=(self)"
+          },
+          {
+            "key": "Feature-Policy",
+            "value": "geolocation 'self'"
+          },
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          }
+        ]
+      }
+    ]
+  }
+}

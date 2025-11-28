@@ -54,7 +54,7 @@ export function GlobalSearch() {
       ) : (
         <Button
           variant="outline"
-          className="relative h-10 w-full max-w-xl justify-start rounded-full bg-background/80 border-primary-foreground/30 text-sm text-muted-foreground hover:bg-background/90 hover:text-foreground"
+          className="relative h-10 w-full max-w-xl justify-start rounded-full bg-background/80 border text-sm text-muted-foreground hover:bg-background/90 hover:text-foreground"
           onClick={() => setOpen(true)}
         >
           <Search className="h-5 w-5 mr-2" />

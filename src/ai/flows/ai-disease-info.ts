@@ -54,7 +54,7 @@ const prompt = ai.definePrompt({
   - Set 'isDisease' to false.
   - 'diseaseName': Create a short title for the symptom analysis (e.g., "Fever and Headache Analysis").
   - 'summary': Identify the most likely condition or health issue based on the symptoms (e.g., "Likely Condition: Migraine" or "Possible Condition: Gastritis"). This is the 'Correct Disease/Symptom Match'.
-  - 'symptoms': This is a critical field. Use it to provide **basic first aid advice or immediate self-care tips** relevant to the symptoms.
+  - 'symptoms': This is a critical field. Use it to provide **basic first aid advice or immediate self-care tips** relevant to the symptoms. **CRITICAL SAFETY RULE: You MUST NOT suggest or mention any specific medicine names, including over-the-counter (OTC) drugs like 'Paracetamol', 'Ibuprofen', or 'Aspirin'. Instead of naming a drug, give general advice like "For pain relief, you may consider over-the-counter options after consulting a pharmacist." or simply suggest non-medicinal actions.**
   - 'recommendedDiet': Suggest a top-level diet plan suitable for the symptoms.
   - 'recommendedTests': Recommend relevant diagnostic tests for discussion with a doctor.
   - 'recommendedSpecialist': Recommend the single most appropriate **doctor specialty and department** to consult (e.g., "Cardiologist, Department of Cardiology"). DO NOT include doctor names.

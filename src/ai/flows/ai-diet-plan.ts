@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -35,7 +36,9 @@ const prompt = ai.definePrompt({
   name: 'dietPlanPrompt',
   input: {schema: AiDietPlanInputSchema},
   output: {schema: AiDietPlanOutputSchema},
-  prompt: `You are an expert AI nutritionist. Based on the user's health conditions and medications, create a simple, one-day diet plan suitable for an Indian user.
+  prompt: `You are an expert AI nutritionist. Based on the user's health conditions and medications, create a simple, one-day diet plan suitable for an Indian user, following the dietary guidelines recommended by the ICMR (Indian Council of Medical Research).
+
+  IMPORTANT: You must act as a pure function. For the exact same input conditions and medications, you must generate the exact same, consistent output every single time. Do not introduce any randomness.
 
   User's Health Conditions: {{{json conditions}}}
   User's Medications: {{{json medications}}}

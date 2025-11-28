@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -110,7 +111,7 @@ function AiAssistantDialog() {
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button className="fixed bottom-24 right-4 h-12 w-12 rounded-full shadow-lg z-30" style={{backgroundColor: 'hsl(var(--primary))'}}>
+                <Button className="fixed bottom-24 right-4 h-12 w-12 rounded-full shadow-lg z-30 border-2" style={{backgroundColor: 'hsl(var(--primary))'}}>
                     <Sparkles className="h-6 w-6" />
                 </Button>
             </DialogTrigger>
@@ -130,7 +131,7 @@ function AiAssistantDialog() {
                     {conversation.map((msg, index) => (
                         <div key={index} className={cn("flex items-start gap-3", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                             {msg.role === 'assistant' && (
-                                <Avatar className="h-8 w-8 border border-primary">
+                                <Avatar className="h-8 w-8 border-2 border-primary">
                                     <AvatarFallback><Sparkles className="h-4 w-4" /></AvatarFallback>
                                 </Avatar>
                             )}
@@ -138,7 +139,7 @@ function AiAssistantDialog() {
                                 <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                             </div>
                              {msg.role === 'user' && (
-                                <Avatar className="h-8 w-8 border border-muted-foreground">
+                                <Avatar className="h-8 w-8 border-2 border-muted-foreground">
                                    <AvatarImage src="/images/profile.jpg" />
                                     <AvatarFallback>CL</AvatarFallback>
                                 </Avatar>
@@ -147,7 +148,7 @@ function AiAssistantDialog() {
                     ))}
                      {isPending && (
                         <div className="flex items-start gap-3 justify-start">
-                            <Avatar className="h-8 w-8 border border-primary">
+                            <Avatar className="h-8 w-8 border-2 border-primary">
                                <AvatarFallback><Sparkles className="h-4 w-4" /></AvatarFallback>
                             </Avatar>
                             <div className="max-w-sm rounded-lg px-4 py-2 bg-background border flex items-center">
@@ -165,8 +166,8 @@ function AiAssistantDialog() {
                         className="flex-1 resize-none"
                         rows={1}
                         disabled={isPending}
-                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); }}}>
-                    </Textarea>
+                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); }}}
+                    />
                     <Button type="submit" size="icon" disabled={isPending || !input.trim()}>
                         <Send className="h-4 w-4" />
                     </Button>
@@ -180,6 +181,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const viewportRef = React.useRef<HTMLDivElement>(null);
+  const [isClient, setIsClient] = React.useState(false);
   const isMobile = useIsMobile();
   const [visibleMenuItems, setVisibleMenuItems] = React.useState<MenuItem[]>([]);
   const [navSettings, setNavSettings] = React.useState<Record<string, boolean>>({});
@@ -187,16 +189,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { language, setLanguage } = useLanguage();
 
   React.useEffect(() => {
-    const savedNavSettings = localStorage.getItem('navSettings');
-    let settings: Record<string, boolean>;
-    if (savedNavSettings) {
-        settings = JSON.parse(savedNavSettings);
-    } else {
-        settings = {};
-        allMenuItems.forEach(item => {
-            settings[item.id] = item.defaultVisible;
-        });
-    }
+    setIsClient(true);
+    // Force reset of nav settings from local storage
+    localStorage.removeItem('navSettings');
+
+    const settings: Record<string, boolean> = {};
+    allMenuItems.forEach(item => {
+        settings[item.id] = item.defaultVisible;
+    });
     setNavSettings(settings);
 
     const finalVisibleItems = allMenuItems.filter(item => settings[item.id] !== false);
@@ -234,6 +234,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
   
+  if (!isClient) {
+    return (
+      <div className="flex flex-col min-h-screen">
+          <header className="sticky top-0 z-20 flex items-center justify-between p-3 bg-primary text-primary-foreground gap-4 h-16">
+              <Link href="/" className="flex items-center gap-2">
+                  <div className="p-1.5 bg-primary-foreground rounded-lg">
+                      <Activity className="w-6 h-6 text-primary" />
+                  </div>
+                  <h1 className="text-xl font-bold">Arogyadhatha</h1>
+              </Link>
+          </header>
+          <main className="flex-1">
+              {children}
+          </main>
+      </div>
+    );
+  }
+
   const handleNavItemClick = (href: string, e: React.MouseEvent) => {
     if (href === '#') {
         e.preventDefault();
@@ -245,12 +263,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col min-h-screen">
       <header className="sticky top-0 z-20 flex items-center justify-between p-3 bg-primary text-primary-foreground gap-2 h-16">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-            {pathname !== '/patients' ? (
+            {pathname !== '/' ? (
                 <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-10 w-10 text-primary-foreground flex-shrink-0">
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
             ) : (
-                <Link href="/patients" className="flex items-center gap-2 flex-shrink-0">
+                <Link href="/" className="flex items-center gap-2 flex-shrink-0">
                     <div className="p-1.5 bg-primary-foreground rounded-lg">
                         <AnimatedActivityIcon className="w-6 h-6 text-primary" />
                     </div>
@@ -278,17 +296,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-                            <Avatar className="h-10 w-10 border border-primary-foreground/50">
+                            <Avatar className="h-10 w-10 border-2 border-primary-foreground/50">
                                 <AvatarImage src="/images/profile.jpg" />
                                 <AvatarFallback className="bg-primary-foreground text-primary font-bold">CL</AvatarFallback>
                             </Avatar>
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-80" align="end" forceMount>
+                    <DropdownMenuContent className="w-80 border" align="end" forceMount>
                         <DropdownMenuItem className="p-0 focus:bg-transparent">
                             <div className="flex items-center justify-between w-full p-3">
-                                <Link href="/patients/profile" className="flex items-start gap-3 cursor-pointer flex-1 overflow-hidden">
-                                    <Avatar className="h-10 w-10">
+                                <Link href="/profile" className="flex items-start gap-3 cursor-pointer flex-1 overflow-hidden">
+                                    <Avatar className="h-10 w-10 border">
                                         <AvatarImage src="/images/profile.jpg" />
                                         <AvatarFallback>CL</AvatarFallback>
                                     </Avatar>
@@ -313,7 +331,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                                 <span className="font-semibold">Wallet</span>
                                 <span className="ml-auto font-bold text-primary">₹150</span>
                             </DropdownMenuItem>
-                             <Link href="/patients/refer-and-earn" passHref>
+                             <Link href="/refer-and-earn" passHref>
                                 <DropdownMenuItem className="p-3">
                                     <Gift className="mr-3 text-primary" />
                                     <span className="font-semibold">Refer & Earn</span>
@@ -329,7 +347,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                                 </Link>
                             ))}
                             
-                            <Link href="/patients/settings" passHref>
+                            <Link href="/settings" passHref>
                                 <DropdownMenuItem className="p-3">
                                     <Settings className="mr-3 text-primary" />
                                     <span className="font-semibold">Settings</span>
@@ -341,13 +359,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                                     <span className="font-semibold">Customer Support</span>
                                 </DropdownMenuItem>
                             </a>
-                             <Link href="/patients/terms" passHref>
+                             <Link href="/terms" passHref>
                                 <DropdownMenuItem className="p-3">
                                     <FileText className="mr-3 text-primary" />
                                     <span className="font-semibold">Terms &amp; Conditions</span>
                                 </DropdownMenuItem>
                             </Link>
-                             <Link href="/patients/about" passHref>
+                             <Link href="/about" passHref>
                                 <DropdownMenuItem className="p-3">
                                     <Info className="mr-3 text-primary" />
                                     <span className="font-semibold">About Arogyadhatha</span>
@@ -356,12 +374,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         </div>
                         <DropdownMenuSeparator />
                         <div className="p-1">
-                            <DropdownMenuItem 
-                                className="p-3 text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-900/50 dark:focus:text-red-500"
-                                onClick={() => router.push('/auth/signin')}
-                            >
+                            <DropdownMenuItem className="p-3 text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-900/50 dark:focus:text-red-500">
                                 <LogOut className="mr-3" />
-                                <span className="font-semibold">Sign Out</span>
+                                <span className="font-semibold">Sign out</span>
                             </DropdownMenuItem>
                         </div>
                     </DropdownMenuContent>
@@ -375,7 +390,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     </DialogHeader>
                     <div className="space-y-3">
                         {familyAccounts.map((account, index) => (
-                            <div key={index} className={cn("p-3 rounded-lg flex items-center justify-between", account.isCurrentUser ? "bg-primary/10 border border-primary/20" : "bg-muted/50")}>
+                            <div key={index} className={cn("p-3 rounded-lg flex items-center justify-between border", account.isCurrentUser ? "bg-primary/10 border-primary/20" : "bg-muted/50")}>
                                 <div className="flex items-center gap-3">
                                     <Avatar>
                                         <AvatarImage src={account.avatar} />
@@ -399,7 +414,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main className="flex-1 bg-muted/20">
-        <div className="p-4 sm:p-6 lg:p-8 pb-32 sm:pb-36">
+        <div className="px-2 py-4 sm:px-6 lg:px-8 pb-32 sm:pb-36">
           {children}
         </div>
       </main>
@@ -407,14 +422,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <footer className="fixed bottom-0 z-20 w-full bg-background border-t">
         <div className="relative">
             <div className="absolute top-0 left-0 h-full flex items-center pl-2 bg-gradient-to-r from-background via-background to-transparent w-12 z-10">
-                <Button variant="ghost" size="icon" className="bg-background hover:bg-muted rounded-full h-8 w-8" onClick={handleScrollLeft}>
+                <Button variant="ghost" size="icon" className="bg-background hover:bg-muted rounded-full h-8 w-8 border" onClick={handleScrollLeft}>
                     <ChevronLeft className="h-5 w-5 text-foreground" />
                 </Button>
             </div>
             <ScrollArea className="w-full" viewportRef={viewportRef}>
                 <nav className="flex w-max py-1 px-12 justify-center">
                     {visibleMenuItems.map((item, index) => {
-                        const isActive = pathname === item.href;
+                        const isActive = isClient && pathname === item.href;
                         const isSpecial = item.label === 'Emergency' || item.label === 'Blood Bank' || item.label === 'Crowd Funding';
                         const specialColor = item.id === 'emergency' ? 'hsl(var(--destructive))' : item.color;
 
@@ -446,7 +461,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <ScrollBar orientation="horizontal" className="invisible" />
             </ScrollArea>
              <div className="absolute top-0 right-0 h-full flex items-center pr-2 bg-gradient-to-l from-background via-background to-transparent w-12 z-10">
-                <Button variant="ghost" size="icon" className="bg-background hover:bg-muted rounded-full h-8 w-8" onClick={handleScrollRight}>
+                <Button variant="ghost" size="icon" className="bg-background hover:bg-muted rounded-full h-8 w-8 border" onClick={handleScrollRight}>
                     <ChevronRight className="h-5 w-5 text-foreground" />
                 </Button>
             </div>

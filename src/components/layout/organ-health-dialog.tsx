@@ -92,7 +92,7 @@ function OrganDietPlanGenerator({ organ }: { organ: any }) {
     return (
         <div className="space-y-4 pt-4">
             {!dietPlan && !isPending && (
-                 <div className="text-center p-4 bg-muted/40 rounded-lg border">
+                 <div className="text-center p-4 bg-muted/40 rounded-lg border-2">
                      <Button onClick={handleGeneratePlan} className="w-full" style={{ backgroundColor: organ.color }}>
                         <Sparkles className="mr-2 h-4 w-4" /> Get AI Diet Plan
                     </Button>
@@ -108,7 +108,7 @@ function OrganDietPlanGenerator({ organ }: { organ: any }) {
             {dietPlan && (
                 <div className="space-y-4">
                     {dietPlan.plan.map((meal, index) => (
-                        <Card key={index} className="bg-background border">
+                        <Card key={index} className="bg-background border-2">
                             <CardHeader className='p-4'>
                                 <CardTitle className="text-base">{meal.meal}</CardTitle>
                             </CardHeader>
@@ -122,7 +122,7 @@ function OrganDietPlanGenerator({ organ }: { organ: any }) {
                             </CardContent>
                         </Card>
                     ))}
-                    <Card className="border">
+                    <Card className="border-2">
                         <CardHeader className='p-4'>
                             <CardTitle className="text-base">General Advice</CardTitle>
                         </CardHeader>
@@ -182,7 +182,7 @@ export function OrganHealthDialog({ organ, children }: { organ: any, children: R
                 </DialogHeader>
 
                 <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-                    <div className="p-3 rounded-lg bg-muted/50 border">
+                    <div className="p-3 rounded-lg bg-muted/50 border-2">
                         <h4 className="font-semibold flex items-center gap-2 mb-2"><FileText className="h-4 w-4"/>Source of Analysis</h4>
                         <p className="text-sm text-muted-foreground">{organ.sourceOfAnalysis}</p>
                     </div>
@@ -192,7 +192,7 @@ export function OrganHealthDialog({ organ, children }: { organ: any, children: R
                             <h4 className="font-semibold flex items-center gap-2">Relevant Tests</h4>
                             <div className="space-y-2">
                                 {organ.relatedTests.map((test: any, index: number) => (
-                                    <div key={index} className="flex justify-between items-center p-2 rounded bg-background border">
+                                    <div key={index} className="flex justify-between items-center p-2 rounded bg-background border-2">
                                         <div>
                                             <p className="font-medium text-sm">{test.name}</p>
                                             <p className="text-xs text-muted-foreground flex items-center gap-1"><Calendar className='h-3 w-3'/> {format(new Date(test.date), 'dd-MMM-yyyy')}</p>
@@ -227,7 +227,7 @@ export function OrganHealthDialog({ organ, children }: { organ: any, children: R
 
 
                     {organ.status === 'Needs Critical Attention' && (
-                         <div className="pt-4 border-t">
+                         <div className="pt-4 border-t-2">
                             <Link href="/appointments" className="w-full">
                                 <Button className="w-full" variant="destructive">
                                     <AlertCircle className="mr-2 h-4 w-4" /> Book an Appointment
@@ -240,5 +240,3 @@ export function OrganHealthDialog({ organ, children }: { organ: any, children: R
         </Dialog>
     );
 }
-
-    
