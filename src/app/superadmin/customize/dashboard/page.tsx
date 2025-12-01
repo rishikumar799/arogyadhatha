@@ -1,6 +1,6 @@
 'use client';
 
-import ThemeSelector from '@/components/superadmin/customize/theme-selector';
+import ThemeSelector from '@/app/superadmin/customize/theme-selector';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LayoutPanelLeft } from 'lucide-react';
 
